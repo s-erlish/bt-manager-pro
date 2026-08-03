@@ -412,7 +412,7 @@
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Text="ПОВЕДЕНИЕ" Style="{StaticResource Text.SectionHeader}" Margin="0,20,0,8" />
+                    <TextBlock Text="ОПЦИИ" Style="{StaticResource Text.SectionHeader}" Margin="0,20,0,8" />
 
                     <Border Style="{StaticResource Card}" Padding="14,12">
                         <StackPanel>

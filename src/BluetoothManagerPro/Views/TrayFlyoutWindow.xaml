@@ -38,8 +38,12 @@
                             CornerRadius="{StaticResource Radius.Small}"
                             Background="{DynamicResource Brush.Surface.Overlay}"
                             TextElement.Foreground="{DynamicResource Brush.Text.Secondary}">
-                        <Path Data="{Binding Category, Converter={StaticResource CategoryToIcon}}"
-                              Style="{StaticResource IconPath.Small}" />
+                        <Grid>
+                            <Border Background="{StaticResource Sheen.Raised}"
+                                    CornerRadius="{StaticResource Radius.Small}" />
+                            <Path Data="{Binding Category, Converter={StaticResource CategoryToIcon}}"
+                                  Style="{StaticResource IconPath.Small}" />
+                        </Grid>
                     </Border>
 
                     <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
@@ -77,7 +81,7 @@
             CornerRadius="{StaticResource Radius.Large}"
             Margin="10">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.45" Color="#000000" />
+            <DropShadowEffect BlurRadius="22" ShadowDepth="4" Direction="270" Opacity="0.30" Color="#000000" />
         </Border.Effect>
 
         <StackPanel Margin="6">

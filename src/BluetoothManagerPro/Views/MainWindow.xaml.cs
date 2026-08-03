@@ -17,10 +17,7 @@ public partial class MainWindow : Window
     /// Half of a tab switch: the content fades out over this, then back in over the same
     /// again. The scan bar's journey is timed against it — see <see cref="SlideScanBar"/>.
     /// </summary>
-    private static readonly TimeSpan FadeHalf = TimeSpan.FromMilliseconds(600);
-
-    /// <summary>The bar sets off halfway through the fade-out.</summary>
-    private static readonly TimeSpan SlideStart = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan FadeHalf = TimeSpan.FromMilliseconds(500);
 
     /// <summary>Used until the layout has been measured once.</summary>
     private const double ScanHomeFallback = 168;
@@ -118,10 +115,9 @@ public partial class MainWindow : Window
     /// Dissolves one pane into the other while the scan bar travels across the window.
     ///
     /// The timing is the point. The content fades out over <see cref="FadeHalf"/> and back
-    /// in over the same again; the bar leaves at the halfway mark of the fade-out and
-    /// arrives at the halfway mark of the fade-in. So at the instant the window is empty
-    /// the bar is exactly midway along its path, and it has finished moving by the time the
-    /// new pane is fully there — the movement is visible for the whole time nothing else is.
+    /// in over the same again, while the bar travels across the entire second — so it is in
+    /// motion the whole time the switch lasts, and because the easing is symmetric it stands
+    /// exactly midway along its path at the instant the window is empty.
     /// </summary>
     private void StartTabSwitch()
     {
@@ -175,8 +171,7 @@ public partial class MainWindow : Window
         _scanShift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation
         {
             To = target,
-            BeginTime = SlideStart,
-            Duration = new Duration(FadeHalf),
+            Duration = new Duration(FadeHalf + FadeHalf),
             EasingFunction = new QuarticEase { EasingMode = EasingMode.EaseInOut },
             FillBehavior = FillBehavior.HoldEnd,
         });

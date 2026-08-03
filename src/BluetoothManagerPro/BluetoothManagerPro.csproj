@@ -32,9 +32,9 @@
     <Product>Bluetooth Manager Pro</Product>
     <AssemblyTitle>Bluetooth Manager Pro</AssemblyTitle>
     <Company>Bluetooth Manager Pro</Company>
-    <Version>1.0.5</Version>
-    <FileVersion>1.0.5.0</FileVersion>
-    <AssemblyVersion>1.0.5.0</AssemblyVersion>
+    <Version>1.0.6</Version>
+    <FileVersion>1.0.6.0</FileVersion>
+    <AssemblyVersion>1.0.6.0</AssemblyVersion>
     <Copyright>MIT License</Copyright>
 
     <!-- Lets the project be restored/compiled from Linux or macOS CI agents. -->

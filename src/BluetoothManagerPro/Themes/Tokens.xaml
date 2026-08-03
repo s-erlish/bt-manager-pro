@@ -35,24 +35,27 @@
 
     <!-- ==================== Relief ==================== -->
     <!--
-        A hint of depth, not a bevel: a light edge along the top and a darker one along the
-        bottom, both barely there. Defined in alpha over whatever is underneath rather than
-        in palette colours, so one pair of gradients works for every theme and for both
-        light and dark without being recomputed.
+        A whisper of depth, not a bevel: a light edge along the top and a darker one along
+        the bottom, both well below the threshold of being noticed on their own.
+
+        Defined in alpha over whatever is underneath rather than in palette colours, so one
+        pair of gradients works for every theme and for both light and dark without being
+        recomputed — and so the same relief applies to the tray flyout and the pairing
+        dialog, which sit on their own surfaces.
     -->
 
     <LinearGradientBrush x:Key="Sheen.Raised" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#1AFFFFFF" Offset="0" />
-        <GradientStop Color="#05FFFFFF" Offset="0.45" />
+        <GradientStop Color="#10FFFFFF" Offset="0" />
+        <GradientStop Color="#03FFFFFF" Offset="0.45" />
         <GradientStop Color="#00FFFFFF" Offset="0.6" />
-        <GradientStop Color="#14000000" Offset="1" />
+        <GradientStop Color="#0C000000" Offset="1" />
     </LinearGradientBrush>
 
     <!-- Inverted: reads as pressed into the surface. Used for the switch track. -->
     <LinearGradientBrush x:Key="Sheen.Inset" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#24000000" Offset="0" />
+        <GradientStop Color="#16000000" Offset="0" />
         <GradientStop Color="#00000000" Offset="0.55" />
-        <GradientStop Color="#12FFFFFF" Offset="1" />
+        <GradientStop Color="#0BFFFFFF" Offset="1" />
     </LinearGradientBrush>
 
     <!-- ==================== Motion ==================== -->
