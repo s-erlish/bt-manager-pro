@@ -8,8 +8,8 @@
         MinWidth="400" MinHeight="480"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
-        Background="{StaticResource Brush.Surface.Base}"
-        Foreground="{StaticResource Brush.Text.Primary}"
+        Background="{DynamicResource Brush.Surface.Base}"
+        Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="{StaticResource Font.Text}"
         FontSize="{StaticResource Font.Size.Body}"
         TextOptions.TextFormattingMode="Ideal"
@@ -43,9 +43,9 @@
                     <!-- Type badge; fills with the accent while connected. -->
                     <Border x:Name="Badge" Grid.Column="0"
                             Width="38" Height="38"
-                            Background="{StaticResource Brush.Surface.Overlay}"
+                            Background="{DynamicResource Brush.Surface.Overlay}"
                             CornerRadius="{StaticResource Radius.Medium}"
-                            TextElement.Foreground="{StaticResource Brush.Text.Secondary}">
+                            TextElement.Foreground="{DynamicResource Brush.Text.Secondary}">
                         <Path Data="{Binding Category, Converter={StaticResource CategoryToIcon}}"
                               Style="{StaticResource IconPath}" />
                     </Border>
@@ -82,16 +82,16 @@
                                         VerticalAlignment="Center"
                                         Visibility="{Binding HasSignal, Converter={StaticResource BoolToVisibility}}">
                                 <Rectangle Width="2" Height="5" RadiusX="1" RadiusY="1" VerticalAlignment="Bottom"
-                                           Fill="{StaticResource Brush.Text.Secondary}"
+                                           Fill="{DynamicResource Brush.Text.Secondary}"
                                            Opacity="{Binding SignalBars, Converter={StaticResource SignalBar}, ConverterParameter=1}" />
                                 <Rectangle Width="2" Height="8" RadiusX="1" RadiusY="1" Margin="2,0,0,0" VerticalAlignment="Bottom"
-                                           Fill="{StaticResource Brush.Text.Secondary}"
+                                           Fill="{DynamicResource Brush.Text.Secondary}"
                                            Opacity="{Binding SignalBars, Converter={StaticResource SignalBar}, ConverterParameter=2}" />
                                 <Rectangle Width="2" Height="11" RadiusX="1" RadiusY="1" Margin="2,0,0,0" VerticalAlignment="Bottom"
-                                           Fill="{StaticResource Brush.Text.Secondary}"
+                                           Fill="{DynamicResource Brush.Text.Secondary}"
                                            Opacity="{Binding SignalBars, Converter={StaticResource SignalBar}, ConverterParameter=3}" />
                                 <Rectangle Width="2" Height="14" RadiusX="1" RadiusY="1" Margin="2,0,0,0" VerticalAlignment="Bottom"
-                                           Fill="{StaticResource Brush.Text.Secondary}"
+                                           Fill="{DynamicResource Brush.Text.Secondary}"
                                            Opacity="{Binding SignalBars, Converter={StaticResource SignalBar}, ConverterParameter=4}" />
                             </StackPanel>
                         </StackPanel>
@@ -145,14 +145,14 @@
 
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsConnected}" Value="True">
-                    <Setter TargetName="Badge" Property="Background" Value="{StaticResource Brush.Accent.Muted}" />
-                    <Setter TargetName="Badge" Property="TextElement.Foreground" Value="{StaticResource Brush.Accent}" />
-                    <Setter TargetName="Status" Property="Foreground" Value="{StaticResource Brush.Positive}" />
+                    <Setter TargetName="Badge" Property="Background" Value="{DynamicResource Brush.Accent.Muted}" />
+                    <Setter TargetName="Badge" Property="TextElement.Foreground" Value="{DynamicResource Brush.Accent}" />
+                    <Setter TargetName="Status" Property="Foreground" Value="{DynamicResource Brush.Positive}" />
                 </DataTrigger>
 
                 <DataTrigger Binding="{Binding IsFavorite}" Value="True">
-                    <Setter TargetName="StarIcon" Property="Stroke" Value="{StaticResource Brush.Accent}" />
-                    <Setter TargetName="StarIcon" Property="Fill" Value="{StaticResource Brush.Accent}" />
+                    <Setter TargetName="StarIcon" Property="Stroke" Value="{DynamicResource Brush.Accent}" />
+                    <Setter TargetName="StarIcon" Property="Fill" Value="{DynamicResource Brush.Accent}" />
                 </DataTrigger>
 
                 <!-- Unpaired devices offer pairing instead of connect / remove. -->
@@ -168,7 +168,7 @@
                 </DataTrigger>
 
                 <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
-                    <Setter TargetName="Row" Property="Background" Value="{StaticResource Brush.Surface.Raised}" />
+                    <Setter TargetName="Row" Property="Background" Value="{DynamicResource Brush.Surface.Raised}" />
                 </Trigger>
             </DataTemplate.Triggers>
         </DataTemplate>
@@ -187,14 +187,15 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- ==================== Title bar ==================== -->
-        <Grid Grid.Row="0" Height="42" Background="{StaticResource Brush.Surface.Base}">
+        <Grid Grid.Row="0" Height="42" Background="{DynamicResource Brush.Surface.Base}">
             <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                 <Path Data="{StaticResource Icon.Bluetooth}"
                       Style="{StaticResource IconPath.Small}"
-                      Stroke="{StaticResource Brush.Accent}" />
+                      Stroke="{DynamicResource Brush.Accent}" />
                 <TextBlock Text="Bluetooth Manager"
                            Style="{StaticResource Text.Body}"
                            FontWeight="SemiBold"
@@ -219,7 +220,8 @@
         </Grid>
 
         <!-- ==================== Radio card ==================== -->
-        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="16,4,16,0" Padding="14,12">
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="16,4,16,0" Padding="14,12"
+                Visibility="{Binding IsDevicesTab, Converter={StaticResource BoolToVisibility}}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -230,8 +232,8 @@
                 <Border x:Name="RadioBadge" Grid.Column="0"
                         Width="38" Height="38"
                         CornerRadius="{StaticResource Radius.Medium}"
-                        Background="{StaticResource Brush.Surface.Overlay}"
-                        TextElement.Foreground="{StaticResource Brush.Text.Secondary}">
+                        Background="{DynamicResource Brush.Surface.Overlay}"
+                        TextElement.Foreground="{DynamicResource Brush.Text.Secondary}">
                     <Path Data="{StaticResource Icon.Bluetooth}" Style="{StaticResource IconPath}" />
                 </Border>
 
@@ -253,10 +255,10 @@
         </Border>
 
         <!-- ==================== Toolbar ==================== -->
-        <Grid Grid.Row="2" Margin="16,12,16,0">
+        <Grid Grid.Row="2" Margin="16,12,16,0"
+              Visibility="{Binding IsDevicesTab, Converter={StaticResource BoolToVisibility}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
@@ -275,14 +277,6 @@
                     <TextBlock Text="Поиск" Margin="6,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
-
-            <ToggleButton Grid.Column="2"
-                          Style="{StaticResource Toggle.Icon}"
-                          Margin="4,0,0,0"
-                          IsChecked="{Binding IsSettingsOpen, Mode=TwoWay}"
-                          ToolTip="Настройки">
-                <Path Data="{StaticResource Icon.Sliders}" Style="{StaticResource IconPath}" />
-            </ToggleButton>
         </Grid>
 
         <!-- Scan progress -->
@@ -294,7 +288,7 @@
         <!-- ==================== Device list ==================== -->
         <Grid Grid.Row="4" Margin="0,8,0,0">
             <ScrollViewer Padding="10,0,6,0"
-                          Visibility="{Binding IsSettingsOpen, Converter={StaticResource BoolToVisibility}, ConverterParameter=invert}">
+                          Visibility="{Binding IsDevicesTab, Converter={StaticResource BoolToVisibility}}">
                 <ItemsControl ItemsSource="{Binding DevicesView}"
                               ItemTemplate="{StaticResource DeviceRowTemplate}"
                               Margin="6,0,6,12">
@@ -322,7 +316,7 @@
                             <MultiDataTrigger>
                                 <MultiDataTrigger.Conditions>
                                     <Condition Binding="{Binding IsListEmpty}" Value="True" />
-                                    <Condition Binding="{Binding IsSettingsOpen}" Value="False" />
+                                    <Condition Binding="{Binding IsDevicesTab}" Value="True" />
                                 </MultiDataTrigger.Conditions>
                                 <Setter Property="Visibility" Value="Visible" />
                             </MultiDataTrigger>
@@ -333,10 +327,10 @@
                 <Path Data="{StaticResource Icon.Bluetooth}"
                       Style="{StaticResource IconPath.Large}"
                       Width="40" Height="40"
-                      Stroke="{StaticResource Brush.Text.Disabled}" />
+                      Stroke="{DynamicResource Brush.Text.Disabled}" />
                 <TextBlock Text="Устройств пока нет"
                            Style="{StaticResource Text.Body}"
-                           Foreground="{StaticResource Brush.Text.Secondary}"
+                           Foreground="{DynamicResource Brush.Text.Secondary}"
                            HorizontalAlignment="Center"
                            Margin="0,12,0,0" />
                 <TextBlock Text="Нажмите «Поиск», чтобы найти устройства рядом"
@@ -348,9 +342,59 @@
 
             <!-- ==================== Settings panel ==================== -->
             <ScrollViewer Padding="16,0"
-                          Visibility="{Binding IsSettingsOpen, Converter={StaticResource BoolToVisibility}}">
+                          Visibility="{Binding IsSettingsTab, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel Margin="0,4,0,16">
-                    <TextBlock Text="ПОВЕДЕНИЕ" Style="{StaticResource Text.SectionHeader}" Margin="0,8,0,8" />
+
+                    <!-- Themes lead the settings: it is the thing people come here to change. -->
+                    <TextBlock Text="ОФОРМЛЕНИЕ" Style="{StaticResource Text.SectionHeader}" Margin="0,8,0,8" />
+
+                    <Border Style="{StaticResource Card}" Padding="14,14">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding Accents}" HorizontalAlignment="Left">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <!-- GroupName makes the swatches mutually exclusive for free. -->
+                                        <RadioButton Style="{StaticResource Swatch}"
+                                                     GroupName="Accent"
+                                                     Margin="0,0,6,0"
+                                                     Background="{Binding Swatch}"
+                                                     IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                     ToolTip="{Binding Name}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Border Height="1" Background="{DynamicResource Brush.Border.Subtle}" Margin="0,14,0,12" />
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="Светлая тема"
+                                               Style="{StaticResource Text.Body}"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Style="{StaticResource Text.Caption}"
+                                               Margin="0,2,0,0"
+                                               TextWrapping="Wrap"
+                                               Text="Не белая — приглушённый оттенок выбранного цвета" />
+                                </StackPanel>
+                                <ToggleButton Grid.Column="1"
+                                              Style="{StaticResource Toggle.Switch}"
+                                              VerticalAlignment="Center"
+                                              Margin="12,0,0,0"
+                                              IsChecked="{Binding IsLightTheme, Mode=TwoWay}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="ПОВЕДЕНИЕ" Style="{StaticResource Text.SectionHeader}" Margin="0,20,0,8" />
 
                     <Border Style="{StaticResource Card}" Padding="14,12">
                         <StackPanel>
@@ -399,29 +443,69 @@
                                Margin="4,16,4,0"
                                TextWrapping="Wrap"
                                Text="Заряд батареи доступен не для всех устройств: Windows получает его только от гарнитур, которые сами сообщают уровень заряда." />
+
+                    <TextBlock Text="{Binding AppFooter}"
+                               Style="{StaticResource Text.Caption}"
+                               HorizontalAlignment="Center"
+                               Margin="0,24,0,0"
+                               Opacity="0.45" />
                 </StackPanel>
             </ScrollViewer>
         </Grid>
 
         <!-- ==================== Status bar ==================== -->
         <Border Grid.Row="5"
-                Background="{StaticResource Brush.Surface.Raised}"
-                BorderBrush="{StaticResource Brush.Border.Subtle}"
+                Background="{DynamicResource Brush.Surface.Raised}"
+                BorderBrush="{DynamicResource Brush.Border.Subtle}"
                 BorderThickness="0,1,0,0"
                 Padding="16,9"
                 Visibility="{Binding HasStatusMessage, Converter={StaticResource BoolToVisibility}}">
             <StackPanel Orientation="Horizontal">
                 <Path Data="{StaticResource Icon.Info}"
                       Style="{StaticResource IconPath.Small}"
-                      Stroke="{StaticResource Brush.Accent}"
+                      Stroke="{DynamicResource Brush.Accent}"
                       VerticalAlignment="Top"
                       Margin="0,1,0,0" />
                 <TextBlock Text="{Binding StatusMessage}"
                            Style="{StaticResource Text.Caption}"
-                           Foreground="{StaticResource Brush.Text.Secondary}"
+                           Foreground="{DynamicResource Brush.Text.Secondary}"
                            TextWrapping="Wrap"
                            Margin="8,0,0,0" />
             </StackPanel>
+        </Border>
+
+        <!-- ==================== Bottom tabs ==================== -->
+        <Border Grid.Row="6"
+                Background="{DynamicResource Brush.Surface.Raised}"
+                BorderBrush="{DynamicResource Brush.Border.Subtle}"
+                BorderThickness="0,1,0,0"
+                Padding="6,5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <RadioButton Grid.Column="0"
+                             Style="{StaticResource Tab}"
+                             GroupName="MainTabs"
+                             IsChecked="{Binding IsDevicesTab, Mode=TwoWay}">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="{StaticResource Icon.Bluetooth}" Style="{StaticResource IconPath.Small}" />
+                        <TextBlock Text="Устройства" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </RadioButton>
+
+                <RadioButton Grid.Column="1"
+                             Style="{StaticResource Tab}"
+                             GroupName="MainTabs"
+                             IsChecked="{Binding IsSettingsTab, Mode=TwoWay}">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="{StaticResource Icon.Sliders}" Style="{StaticResource IconPath.Small}" />
+                        <TextBlock Text="Настройки" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </RadioButton>
+            </Grid>
         </Border>
     </Grid>
 </Window>

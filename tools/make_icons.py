@@ -30,16 +30,12 @@ RUNE = [
     ((17.5, 6.5), (6.5, 17.5)),
 ]
 
-SLASH = [((3.5, 20.5), (20.5, 3.5))]
-
 GRID = 24.0
 STROKE = 2.4          # in grid units
 SIZES = [16, 20, 24, 32, 48, 64, 128, 256]
 PNG_FROM = 128        # sizes >= this are stored as PNG entries inside the .ico
 
 ACCENT = (0xD0, 0x8A, 0x2E)
-IDLE = (0xC8, 0xC8, 0xD0)
-OFF = (0x78, 0x78, 0x82)
 
 
 def distance_to_segment(px: float, py: float, ax: float, ay: float, bx: float, by: float) -> float:
@@ -148,11 +144,11 @@ def main() -> int:
     target = os.path.abspath(target)
     os.makedirs(target, exist_ok=True)
 
+    # Only the executable icon is a file. The tray icon is drawn at runtime by
+    # Views/TrayIconRenderer, from this same geometry, so it can take the colour of
+    # whichever theme the user picked.
     icons = {
         "app.ico": (ACCENT, RUNE),
-        "tray-active.ico": (ACCENT, RUNE),
-        "tray-idle.ico": (IDLE, RUNE),
-        "tray-off.ico": (OFF, RUNE + SLASH),
     }
 
     for name, (colour, segments) in icons.items():

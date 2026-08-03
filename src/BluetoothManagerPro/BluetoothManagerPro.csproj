@@ -32,9 +32,9 @@
     <Product>Bluetooth Manager Pro</Product>
     <AssemblyTitle>Bluetooth Manager Pro</AssemblyTitle>
     <Company>Bluetooth Manager Pro</Company>
-    <Version>1.0.0</Version>
-    <FileVersion>1.0.0.0</FileVersion>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <Version>1.0.2</Version>
+    <FileVersion>1.0.2.0</FileVersion>
+    <AssemblyVersion>1.0.2.0</AssemblyVersion>
     <Copyright>MIT License</Copyright>
 
     <!-- Lets the project be restored/compiled from Linux or macOS CI agents. -->
@@ -77,13 +77,6 @@
     -->
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Compiled into the assembly so they survive a single-file publish. -->
-    <Resource Include="Assets\tray-active.ico" />
-    <Resource Include="Assets\tray-idle.ico" />
-    <Resource Include="Assets\tray-off.ico" />
   </ItemGroup>
 
 </Project>

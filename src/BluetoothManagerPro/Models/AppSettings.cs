@@ -5,6 +5,12 @@ namespace BluetoothManagerPro.Models;
 /// <summary>User preferences, persisted as JSON under %APPDATA%\BluetoothManagerPro.</summary>
 public sealed class AppSettings
 {
+    /// <summary>Id of the chosen accent; see <see cref="AccentPreset.All"/>.</summary>
+    public string AccentId { get; set; } = AccentPreset.DefaultId;
+
+    /// <summary>Dark surfaces, or light ones tinted with the accent.</summary>
+    public ThemeMode ThemeMode { get; set; } = ThemeMode.Dark;
+
     /// <summary>Register the app in the per-user Run key so it comes up with the session.</summary>
     public bool AutoStart { get; set; }
 

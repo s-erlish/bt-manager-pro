@@ -2,15 +2,16 @@ using System;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using BluetoothManagerPro.Interop;
+using BluetoothManagerPro.Services;
 using BluetoothManagerPro.ViewModels;
 
 namespace BluetoothManagerPro.Views;
 
 public partial class MainWindow : Window
 {
-    /// <summary>Border colour handed to DWM, in 0x00BBGGRR — the ochre accent.</summary>
-    private const int AccentBorderBgr = 0x002E8AD0;
+    private ThemeService? _theme;
 
     public MainWindow()
     {
@@ -18,11 +19,29 @@ public partial class MainWindow : Window
         SourceInitialized += OnSourceInitialized;
     }
 
-    private void OnSourceInitialized(object? sender, EventArgs e)
+    /// <summary>Lets the window frame follow the palette, which WPF cannot style itself.</summary>
+    public void UseTheme(ThemeService theme)
     {
-        // WindowStyle=None already removes the caption, but the frame DWM draws around
-        // the window is still light by default on Windows 10.
-        WindowNative.ApplyDarkFrame(new WindowInteropHelper(this).Handle, AccentBorderBgr);
+        _theme = theme;
+        theme.Changed += ApplyFrame;
+    }
+
+    private void OnSourceInitialized(object? sender, EventArgs e) => ApplyFrame();
+
+    private void ApplyFrame()
+    {
+        IntPtr handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        // WindowStyle=None already removes the caption, but the frame DWM draws around the
+        // window is still light by default on Windows 10 — and its border colour is a
+        // Win32 attribute, so it has to be pushed on every theme change.
+        Color accent = _theme?.AccentColor ?? Colors.Gray;
+        int bgr = accent.B << 16 | accent.G << 8 | accent.R;
+        WindowNative.ApplyDarkFrame(handle, bgr, _theme?.Mode != Models.ThemeMode.Light);
     }
 
     private void OnMinimiseClick(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
@@ -38,6 +57,11 @@ public partial class MainWindow : Window
             e.Cancel = true;
             Hide();
             return;
+        }
+
+        if (_theme is not null)
+        {
+            _theme.Changed -= ApplyFrame;
         }
 
         base.OnClosing(e);

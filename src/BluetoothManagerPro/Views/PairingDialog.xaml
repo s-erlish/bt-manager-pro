@@ -14,8 +14,8 @@
         FontSize="{StaticResource Font.Size.Body}"
         UseLayoutRounding="True">
 
-    <Border Background="{StaticResource Brush.Surface.Raised}"
-            BorderBrush="{StaticResource Brush.Border.Strong}"
+    <Border Background="{DynamicResource Brush.Surface.Raised}"
+            BorderBrush="{DynamicResource Brush.Border.Strong}"
             BorderThickness="1"
             CornerRadius="{StaticResource Radius.Large}"
             Padding="20"
@@ -28,8 +28,8 @@
             <StackPanel Orientation="Horizontal">
                 <Border Width="38" Height="38"
                         CornerRadius="{StaticResource Radius.Medium}"
-                        Background="{StaticResource Brush.Accent.Muted}"
-                        TextElement.Foreground="{StaticResource Brush.Accent}">
+                        Background="{DynamicResource Brush.Accent.Muted}"
+                        TextElement.Foreground="{DynamicResource Brush.Accent}">
                     <Path Data="{StaticResource Icon.Bluetooth}" Style="{StaticResource IconPath}" />
                 </Border>
                 <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
@@ -49,7 +49,7 @@
             <!-- Shown for DisplayPin / ConfirmPinMatch -->
             <Border x:Name="PinDisplay"
                     Style="{StaticResource Card}"
-                    Background="{StaticResource Brush.Surface.Overlay}"
+                    Background="{DynamicResource Brush.Surface.Overlay}"
                     Padding="16,12"
                     Margin="0,14,0,0"
                     Visibility="Collapsed">
@@ -57,7 +57,7 @@
                            HorizontalAlignment="Center"
                            FontSize="26"
                            FontWeight="SemiBold"
-                           Foreground="{StaticResource Brush.Accent}" />
+                           Foreground="{DynamicResource Brush.Accent}" />
             </Border>
 
             <!-- Shown for ProvidePin -->

@@ -36,8 +36,8 @@
                     <Border x:Name="Badge" Grid.Column="0"
                             Width="30" Height="30"
                             CornerRadius="{StaticResource Radius.Small}"
-                            Background="{StaticResource Brush.Surface.Overlay}"
-                            TextElement.Foreground="{StaticResource Brush.Text.Secondary}">
+                            Background="{DynamicResource Brush.Surface.Overlay}"
+                            TextElement.Foreground="{DynamicResource Brush.Text.Secondary}">
                         <Path Data="{Binding Category, Converter={StaticResource CategoryToIcon}}"
                               Style="{StaticResource IconPath.Small}" />
                     </Border>
@@ -63,16 +63,16 @@
 
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsConnected}" Value="True">
-                    <Setter TargetName="Badge" Property="Background" Value="{StaticResource Brush.Accent.Muted}" />
-                    <Setter TargetName="Badge" Property="TextElement.Foreground" Value="{StaticResource Brush.Accent}" />
-                    <Setter TargetName="Status" Property="Foreground" Value="{StaticResource Brush.Positive}" />
+                    <Setter TargetName="Badge" Property="Background" Value="{DynamicResource Brush.Accent.Muted}" />
+                    <Setter TargetName="Badge" Property="TextElement.Foreground" Value="{DynamicResource Brush.Accent}" />
+                    <Setter TargetName="Status" Property="Foreground" Value="{DynamicResource Brush.Positive}" />
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
     </Window.Resources>
 
-    <Border Background="{StaticResource Brush.Surface.Raised}"
-            BorderBrush="{StaticResource Brush.Border.Strong}"
+    <Border Background="{DynamicResource Brush.Surface.Raised}"
+            BorderBrush="{DynamicResource Brush.Border.Strong}"
             BorderThickness="1"
             CornerRadius="{StaticResource Radius.Large}"
             Margin="10">
@@ -93,7 +93,7 @@
                 <Path Grid.Column="0"
                       Data="{StaticResource Icon.Bluetooth}"
                       Style="{StaticResource IconPath.Small}"
-                      Stroke="{StaticResource Brush.Accent}" />
+                      Stroke="{DynamicResource Brush.Accent}" />
                 <TextBlock Grid.Column="1"
                            Text="{Binding RadioStatusText}"
                            Style="{StaticResource Text.Body}"
@@ -106,7 +106,7 @@
                               IsEnabled="{Binding IsRadioAvailable}" />
             </Grid>
 
-            <Border Height="1" Background="{StaticResource Brush.Border.Subtle}" Margin="4,6" />
+            <Border Height="1" Background="{DynamicResource Brush.Border.Subtle}" Margin="4,6" />
 
             <!-- Favourites and anything currently connected -->
             <ItemsControl ItemsSource="{Binding QuickAccessDevices}"
@@ -118,7 +118,7 @@
                        Visibility="{Binding HasQuickAccessDevices, Converter={StaticResource BoolToVisibility}, ConverterParameter=invert}"
                        Text="Отметьте устройства звёздочкой в главном окне, чтобы они появились здесь." />
 
-            <Border Height="1" Background="{StaticResource Brush.Border.Subtle}" Margin="4,6" />
+            <Border Height="1" Background="{DynamicResource Brush.Border.Subtle}" Margin="4,6" />
 
             <Button Style="{StaticResource Button.Ghost}"
                     HorizontalContentAlignment="Stretch"

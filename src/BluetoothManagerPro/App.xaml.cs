@@ -18,6 +18,7 @@ namespace BluetoothManagerPro;
 public partial class App : Application
 {
     private SingleInstance? _instance;
+    private ThemeService? _theme;
     private BluetoothDiscoveryService? _discovery;
     private RadioService? _radio;
     private MainViewModel? _viewModel;
@@ -41,6 +42,11 @@ public partial class App : Application
         var settingsStore = new SettingsService();
         AppSettings settings = settingsStore.Load();
 
+        // The palette has to exist before any window is built, since every surface binds
+        // to it dynamically.
+        _theme = new ThemeService(Resources);
+        _theme.Apply(AccentPreset.Resolve(settings.AccentId), settings.ThemeMode);
+
         Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
         _discovery = new BluetoothDiscoveryService(dispatcher);
         _radio = new RadioService(dispatcher);
@@ -52,15 +58,19 @@ public partial class App : Application
             new BatteryService(),
             new AutoStartService(),
             settingsStore,
+            _theme,
             settings,
             dispatcher);
 
         _window = new MainWindow { DataContext = _viewModel };
+        _window.UseTheme(_theme);
         _viewModel.PairingPromptHandler = prompt => dispatcher.InvokeAsync(
             () => PairingDialog.AskAsync(prompt, _window)).Task.Unwrap();
 
-        _tray = new TrayIconHost(_viewModel);
+        _tray = new TrayIconHost(_viewModel, _theme);
+        _tray.IsMainWindowVisible = () => _window?.IsVisible == true;
         _tray.ShowWindowRequested += ShowMainWindow;
+        _tray.HideWindowRequested += () => _window?.Hide();
         _tray.ExitRequested += () => Shutdown();
 
         _instance.ActivationRequested += () => dispatcher.InvokeAsync(ShowMainWindow);

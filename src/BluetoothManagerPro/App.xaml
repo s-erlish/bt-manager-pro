@@ -6,7 +6,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/Themes/Palette.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Themes/Tokens.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/Themes/Icons.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/Themes/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>

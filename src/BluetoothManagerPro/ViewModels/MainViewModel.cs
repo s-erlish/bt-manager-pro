@@ -27,6 +27,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly BatteryService _battery;
     private readonly AutoStartService _autoStart;
     private readonly SettingsService _settingsStore;
+    private readonly ThemeService _theme;
     private readonly AppSettings _settings;
 
     private readonly Dictionary<string, DeviceViewModel> _byKey = new(StringComparer.OrdinalIgnoreCase);
@@ -50,6 +51,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         BatteryService battery,
         AutoStartService autoStart,
         SettingsService settingsStore,
+        ThemeService theme,
         AppSettings settings,
         Dispatcher dispatcher)
     {
@@ -59,7 +61,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _battery = battery;
         _autoStart = autoStart;
         _settingsStore = settingsStore;
+        _theme = theme;
         _settings = settings;
+
+        Accents = AccentPreset.All.Select(p => new AccentSwatchViewModel(p, ApplyAccent)).ToArray();
+        SyncThemeSelection();
 
         Devices = new ObservableCollection<DeviceViewModel>();
         DevicesView = (ListCollectionView)CollectionViewSource.GetDefaultView(Devices);
@@ -208,11 +214,69 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         private set => SetProperty(ref _isScanning, value);
     }
 
-    public bool IsSettingsOpen
+    // ---- Tabs ---------------------------------------------------------------
+
+    /// <summary>
+    /// The two bottom tabs. Both are two-way bound to their RadioButton, and each keeps
+    /// the other honest so the content switches even when navigated by keyboard.
+    /// </summary>
+    public bool IsDevicesTab
+    {
+        get => !_isSettingsOpen;
+        set
+        {
+            if (value && SetProperty(ref _isSettingsOpen, false))
+            {
+                OnPropertyChanged(nameof(IsSettingsTab));
+            }
+        }
+    }
+
+    public bool IsSettingsTab
     {
         get => _isSettingsOpen;
-        set => SetProperty(ref _isSettingsOpen, value);
+        set
+        {
+            if (value && SetProperty(ref _isSettingsOpen, true))
+            {
+                OnPropertyChanged(nameof(IsDevicesTab));
+            }
+        }
     }
+
+    // ---- Theme --------------------------------------------------------------
+
+    /// <summary>The accent picker, ordered as declared.</summary>
+    public IReadOnlyList<AccentSwatchViewModel> Accents { get; }
+
+    /// <summary>
+    /// Light mode is a washed-out tint of the accent rather than white — the point is a
+    /// bright theme that is still calm to look at.
+    /// </summary>
+    public bool IsLightTheme
+    {
+        get => _settings.ThemeMode == ThemeMode.Light;
+        set
+        {
+            ThemeMode mode = value ? ThemeMode.Light : ThemeMode.Dark;
+            if (_settings.ThemeMode == mode)
+            {
+                return;
+            }
+
+            _settings.ThemeMode = mode;
+            _theme.Apply(AccentPreset.Resolve(_settings.AccentId), mode);
+            foreach (AccentSwatchViewModel swatch in Accents)
+            {
+                swatch.Preview(mode);
+            }
+
+            Persist();
+            OnPropertyChanged();
+        }
+    }
+
+    public string AppFooter => AppInfo.Footer;
 
     public bool AutoStart
     {
@@ -659,6 +723,29 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         Persist();
         ScheduleResort();
+    }
+
+    private void ApplyAccent(AccentPreset preset)
+    {
+        if (string.Equals(_settings.AccentId, preset.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _settings.AccentId = preset.Id;
+        _theme.Apply(preset, _settings.ThemeMode);
+        Persist();
+    }
+
+    /// <summary>Points the picker at whatever is stored, without re-applying the theme.</summary>
+    private void SyncThemeSelection()
+    {
+        AccentPreset current = AccentPreset.Resolve(_settings.AccentId);
+        foreach (AccentSwatchViewModel swatch in Accents)
+        {
+            swatch.SetSelectedQuietly(swatch.Preset.Id == current.Id);
+            swatch.Preview(_settings.ThemeMode);
+        }
     }
 
     private void OpenSystemSettings(object? parameter)

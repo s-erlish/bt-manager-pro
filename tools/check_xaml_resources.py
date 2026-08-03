@@ -23,11 +23,26 @@ import sys
 KEY_PATTERN = re.compile(r'x:Key\s*=\s*"([^"]+)"')
 REFERENCE_PATTERN = re.compile(r'\{(?:Static|Dynamic)Resource\s+([^}\s,]+)\s*\}')
 
+# Colour keys are registered at startup by ThemeService rather than declared in XAML,
+# so they are harvested from its source — a typo in either half still fails this check.
+PALETTE_SOURCE = os.path.join("BluetoothManagerPro", "Services", "ThemeService.cs")
+PALETTE_KEY_PATTERN = re.compile(r'(?:\["|_resources\[")(Brush\.[A-Za-z.]+)"\]')
+
 # Keys that WPF itself provides.
 BUILTIN = {
     "ScrollBar.PageDownCommand",
     "ScrollBar.PageUpCommand",
 }
+
+
+def collect_palette_keys(root: str) -> set[str]:
+    path = os.path.join(root, PALETTE_SOURCE)
+    if not os.path.exists(path):
+        print(f"warning: {PALETTE_SOURCE} not found; palette keys cannot be verified")
+        return set()
+
+    with open(path, encoding="utf-8") as handle:
+        return set(PALETTE_KEY_PATTERN.findall(handle.read()))
 
 
 def collect(path: str) -> tuple[set[str], list[tuple[int, str]]]:
@@ -57,7 +72,7 @@ def main() -> int:
         return 1
 
     per_file = {path: collect(path) for path in files}
-    theme_keys = set(BUILTIN)
+    theme_keys = set(BUILTIN) | collect_palette_keys(root)
     for path, (keys, _) in per_file.items():
         if os.sep + "Themes" + os.sep in path:
             theme_keys |= keys

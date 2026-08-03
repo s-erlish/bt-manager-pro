@@ -1,10 +1,10 @@
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
-using System.Windows;
 using System.Windows.Forms;
+using System.Windows.Threading;
+using BluetoothManagerPro.Services;
 using BluetoothManagerPro.ViewModels;
 
 namespace BluetoothManagerPro.Views;
@@ -18,40 +18,56 @@ namespace BluetoothManagerPro.Views;
 /// </summary>
 public sealed class TrayIconHost : IDisposable
 {
+    /// <summary>Idle and disabled shades are fixed: the taskbar is not ours to theme.</summary>
+    private static readonly Color IdleColor = Color.FromArgb(0xC8, 0xC8, 0xD0);
+    private static readonly Color OffColor = Color.FromArgb(0x78, 0x78, 0x82);
+
     private readonly NotifyIcon _icon;
     private readonly MainViewModel _viewModel;
-    private readonly Icon? _iconActive;
-    private readonly Icon? _iconIdle;
-    private readonly Icon? _iconOff;
+    private readonly ThemeService _theme;
+    private readonly DispatcherTimer _clickTimer;
 
     private TrayFlyoutWindow? _flyout;
+    private Icon? _current;
     private bool _disposed;
 
-    public TrayIconHost(MainViewModel viewModel)
+    public TrayIconHost(MainViewModel viewModel, ThemeService theme)
     {
         _viewModel = viewModel;
-
-        _iconActive = Load("tray-active.ico");
-        _iconIdle = Load("tray-idle.ico");
-        _iconOff = Load("tray-off.ico");
+        _theme = theme;
 
         _icon = new NotifyIcon
         {
-            Icon = _iconIdle ?? SystemIcons.Application,
             Text = "Bluetooth Manager",
             Visible = true,
         };
 
+        // A double click always fires the single-click event first, so the single-click
+        // action waits out the system's double-click window before committing.
+        _clickTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(SystemInformation.DoubleClickTime + 40),
+        };
+        _clickTimer.Tick += OnClickTimerElapsed;
+
         _icon.MouseClick += OnIconClicked;
-        _icon.MouseDoubleClick += (_, _) => ShowWindowRequested?.Invoke();
+        _icon.MouseDoubleClick += OnIconDoubleClicked;
         _viewModel.PropertyChanged += OnViewModelChanged;
+        _theme.Changed += Refresh;
+
+        Refresh();
     }
+
+    /// <summary>Asked when deciding what a single click should do.</summary>
+    public Func<bool>? IsMainWindowVisible { get; set; }
 
     public event Action? ShowWindowRequested;
 
+    public event Action? HideWindowRequested;
+
     public event Action? ExitRequested;
 
-    /// <summary>Re-reads the view model and updates the icon and tooltip.</summary>
+    /// <summary>Redraws the icon for the current theme and connection state.</summary>
     public void Refresh()
     {
         if (_disposed)
@@ -60,14 +76,22 @@ public sealed class TrayIconHost : IDisposable
         }
 
         int connected = _viewModel.Devices.Count(d => d.IsConnected);
+        bool radioOff = !_viewModel.IsBluetoothOn && _viewModel.IsRadioAvailable;
 
-        _icon.Icon = !_viewModel.IsBluetoothOn && _viewModel.IsRadioAvailable
-            ? _iconOff ?? SystemIcons.Application
+        Color color = radioOff
+            ? OffColor
             : connected > 0
-                ? _iconActive ?? SystemIcons.Application
-                : _iconIdle ?? SystemIcons.Application;
+                ? TrayIconRenderer.ToDrawing(_theme.TrayAccentColor)
+                : IdleColor;
 
-        string state = !_viewModel.IsBluetoothOn && _viewModel.IsRadioAvailable
+        Icon rendered = TrayIconRenderer.Render(SystemInformation.SmallIconSize.Width, color, radioOff);
+        _icon.Icon = rendered;
+
+        // Swap first, then release the icon the shell was using.
+        _current?.Dispose();
+        _current = rendered;
+
+        string state = radioOff
             ? "Bluetooth выключен"
             : connected == 0
                 ? "Нет подключённых устройств"
@@ -88,13 +112,47 @@ public sealed class TrayIconHost : IDisposable
         }
     }
 
+    // ---- Clicks -------------------------------------------------------------
+
     private void OnIconClicked(object? sender, MouseEventArgs e)
     {
-        if (e.Button is not (MouseButtons.Left or MouseButtons.Right))
+        if (e.Button == MouseButtons.Right)
         {
+            // Right click has no double-click meaning, so it can act immediately.
+            ShowFlyout();
             return;
         }
 
+        if (e.Button == MouseButtons.Left)
+        {
+            _clickTimer.Stop();
+            _clickTimer.Start();
+        }
+    }
+
+    private void OnIconDoubleClicked(object? sender, MouseEventArgs e)
+    {
+        _clickTimer.Stop();
+        _flyout?.Hide();
+        ShowWindowRequested?.Invoke();
+    }
+
+    private void OnClickTimerElapsed(object? sender, EventArgs e)
+    {
+        _clickTimer.Stop();
+
+        // With the window up, a single click puts it away; otherwise it opens the flyout.
+        if (IsMainWindowVisible?.Invoke() == true)
+        {
+            HideWindowRequested?.Invoke();
+            return;
+        }
+
+        ShowFlyout();
+    }
+
+    private void ShowFlyout()
+    {
         _flyout ??= new TrayFlyoutWindow { DataContext = _viewModel };
         _flyout.OpenWindowRequested -= OnOpenWindowRequested;
         _flyout.ExitRequested -= OnExitRequested;
@@ -114,29 +172,6 @@ public sealed class TrayIconHost : IDisposable
 
     private void OnExitRequested() => ExitRequested?.Invoke();
 
-    /// <summary>Loads an icon that was compiled in as a WPF resource.</summary>
-    private static Icon? Load(string fileName)
-    {
-        try
-        {
-            var uri = new Uri($"pack://application:,,,/Assets/{fileName}", UriKind.Absolute);
-            System.Windows.Resources.StreamResourceInfo? info = System.Windows.Application.GetResourceStream(uri);
-            if (info is null)
-            {
-                return null;
-            }
-
-            using System.IO.Stream stream = info.Stream;
-            // Ask for the shell's small-icon size so the right frame is picked on high DPI.
-            return new Icon(stream, SystemInformation.SmallIconSize);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Tray icon '{fileName}' could not be loaded: {ex.Message}");
-            return null;
-        }
-    }
-
     public void Dispose()
     {
         if (_disposed)
@@ -145,12 +180,14 @@ public sealed class TrayIconHost : IDisposable
         }
 
         _disposed = true;
+        _clickTimer.Stop();
+        _clickTimer.Tick -= OnClickTimerElapsed;
         _viewModel.PropertyChanged -= OnViewModelChanged;
+        _theme.Changed -= Refresh;
+
         _icon.Visible = false;
         _icon.Dispose();
-        _iconActive?.Dispose();
-        _iconIdle?.Dispose();
-        _iconOff?.Dispose();
+        _current?.Dispose();
 
         if (_flyout is not null)
         {

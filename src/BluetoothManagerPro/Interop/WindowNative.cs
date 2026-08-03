@@ -22,14 +22,14 @@ internal static class WindowNative
     /// Asks DWM for a dark, rounded frame. Every attribute here is best-effort:
     /// the constants land in different Windows 10 builds and are ignored before them.
     /// </summary>
-    public static void ApplyDarkFrame(IntPtr hwnd, int borderColorBgr)
+    public static void ApplyDarkFrame(IntPtr hwnd, int borderColorBgr, bool dark = true)
     {
         if (hwnd == IntPtr.Zero)
         {
             return;
         }
 
-        int on = 1;
+        int on = dark ? 1 : 0;
         // Windows 10 2004+ uses 20; 1809..1909 shipped the same flag as 19.
         if (DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref on, sizeof(int)) != 0)
         {
