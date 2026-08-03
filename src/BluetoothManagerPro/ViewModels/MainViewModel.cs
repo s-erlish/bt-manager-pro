@@ -106,7 +106,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     /// <summary>Favourites, connected first — this is what the tray flyout shows.</summary>
     public IReadOnlyList<DeviceViewModel> QuickAccessDevices =>
-        Devices.Where(d => d.IsFavorite || d.IsConnected)
+        Devices.Where(d => (d.IsFavorite || d.IsConnected) && IsWorthShowing(d))
                .OrderBy(d => d.IsConnected ? 0 : 1)
                .ThenBy(d => d.DisplayName, StringComparer.CurrentCultureIgnoreCase)
                .Take(6)
@@ -400,25 +400,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     }
 
     private bool FilterDevice(object item)
-    {
-        if (item is not DeviceViewModel device)
-        {
-            return false;
-        }
+        => item is DeviceViewModel device && IsWorthShowing(device) && MatchesSearch(device);
 
-        // Unpaired devices are only worth listing while they are actually in range.
-        if (!device.IsPaired && (!device.IsPresent || (HideUnnamedDevices && !device.HasName)))
-        {
-            return false;
-        }
+    /// <summary>
+    /// Whether the row represents something the user would recognise. Kept separate from
+    /// the search text so the tray flyout can apply it too — the flyout must not inherit
+    /// whatever is typed in the main window's search box.
+    /// </summary>
+    private bool IsWorthShowing(DeviceViewModel device)
+        => device.IsPaired || (device.IsPresent && (!HideUnnamedDevices || device.HasName));
 
-        if (string.IsNullOrWhiteSpace(SearchText))
-        {
-            return true;
-        }
-
-        return device.DisplayName.Contains(SearchText, StringComparison.CurrentCultureIgnoreCase);
-    }
+    private bool MatchesSearch(DeviceViewModel device)
+        => string.IsNullOrWhiteSpace(SearchText)
+           || device.DisplayName.Contains(SearchText, StringComparison.CurrentCultureIgnoreCase);
 
     // ---- Polling ------------------------------------------------------------
 
@@ -438,17 +432,37 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
+        // An empty sweep cannot be told apart from a radio that was momentarily busy, and
+        // acting on it would flicker every device to disconnected.
+        if (states.Count == 0)
+        {
+            return;
+        }
+
         bool ordering = false;
         foreach (DeviceViewModel device in Devices)
         {
-            if (device.Address == 0 || !states.TryGetValue(device.Address, out ClassicDeviceState state))
+            bool connected;
+            if (states.TryGetValue(device.Address, out ClassicDeviceState state))
             {
+                connected = state.IsConnected;
+            }
+            else if (device.Address != 0 && device.HasClassicEndpoint)
+            {
+                // The sweep reports every remembered BR/EDR device, so one that is missing
+                // from it is not connected. Without this a device that drops off the
+                // classic stack keeps whatever flag it had and stays stuck on "Подключено".
+                connected = false;
+            }
+            else
+            {
+                // LE-only endpoints never appear in the classic sweep; leave them alone.
                 continue;
             }
 
-            if (device.IsConnected != state.IsConnected)
+            if (device.IsConnected != connected)
             {
-                device.IsConnected = state.IsConnected;
+                device.IsConnected = connected;
                 ordering = true;
             }
         }

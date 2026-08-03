@@ -222,13 +222,33 @@ public sealed class DeviceViewModel : ObservableObject
         bool connected = all.Any(e => e.IsConnected);
         bool ordering = paired != _isPaired || connected != _isConnected;
 
-        Name = all.Select(e => e.Name).FirstOrDefault(n => !string.IsNullOrWhiteSpace(n)) ?? string.Empty;
-        Category = all.Select(e => e.Category).FirstOrDefault(c => c != DeviceCategory.Unknown);
-        Address = all.Select(e => e.Address).FirstOrDefault(a => a != 0);
+        // Identity is sticky. A device usually carries its name, address and class on one
+        // endpoint only, and that endpoint goes away first when the device disconnects —
+        // so recomputing these from whatever is left would rename a known speaker to
+        // "Неизвестное устройство" and, worse, zero its address, after which the classic
+        // sweep below can no longer find it to correct a stale connected flag.
+        string name = all.Select(e => e.Name).FirstOrDefault(n => !string.IsNullOrWhiteSpace(n)) ?? string.Empty;
+        if (name.Length > 0)
+        {
+            Name = name;
+        }
+
+        ulong address = all.Select(e => e.Address).FirstOrDefault(a => a != 0);
+        if (address != 0)
+        {
+            Address = address;
+        }
+
+        DeviceCategory category = all.Select(e => e.Category).FirstOrDefault(c => c != DeviceCategory.Unknown);
+        if (category != DeviceCategory.Unknown)
+        {
+            Category = category;
+        }
+
         IsPaired = paired;
         IsConnected = connected;
 
-        // Never clear a battery reading just because the other endpoint does not carry one.
+        // Same reasoning: never clear a battery reading because another endpoint lacks one.
         int? battery = all.Select(e => e.BatteryPercent).FirstOrDefault(b => b is not null);
         if (battery is not null)
         {
