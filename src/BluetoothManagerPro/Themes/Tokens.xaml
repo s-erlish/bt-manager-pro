@@ -33,6 +33,28 @@
     <sys:Double x:Key="Font.Size.Subtitle">15</sys:Double>
     <sys:Double x:Key="Font.Size.Title">20</sys:Double>
 
+    <!-- ==================== Relief ==================== -->
+    <!--
+        A hint of depth, not a bevel: a light edge along the top and a darker one along the
+        bottom, both barely there. Defined in alpha over whatever is underneath rather than
+        in palette colours, so one pair of gradients works for every theme and for both
+        light and dark without being recomputed.
+    -->
+
+    <LinearGradientBrush x:Key="Sheen.Raised" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#1AFFFFFF" Offset="0" />
+        <GradientStop Color="#05FFFFFF" Offset="0.45" />
+        <GradientStop Color="#00FFFFFF" Offset="0.6" />
+        <GradientStop Color="#14000000" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Inverted: reads as pressed into the surface. Used for the switch track. -->
+    <LinearGradientBrush x:Key="Sheen.Inset" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#24000000" Offset="0" />
+        <GradientStop Color="#00000000" Offset="0.55" />
+        <GradientStop Color="#12FFFFFF" Offset="1" />
+    </LinearGradientBrush>
+
     <!-- ==================== Motion ==================== -->
     <!--
         Unhurried and always eased out, so movement decelerates into place rather than

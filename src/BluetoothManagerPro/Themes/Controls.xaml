@@ -133,6 +133,12 @@
                                 CornerRadius="{StaticResource Radius.Medium}"
                                 Background="{Binding Path=(infra:ThemeProps.PressBrush), RelativeSource={RelativeSource TemplatedParent}}" />
 
+                        <!-- Sits above the state layers so the depth survives hover. -->
+                        <Border x:Name="Relief"
+                                IsHitTestVisible="False"
+                                CornerRadius="{StaticResource Radius.Medium}"
+                                Background="{Binding Path=(infra:ThemeProps.ReliefBrush), RelativeSource={RelativeSource TemplatedParent}}" />
+
                         <ContentPresenter Margin="{TemplateBinding Padding}"
                                           HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
@@ -214,6 +220,7 @@
         <Setter Property="infra:ThemeProps.HoverBrush" Value="{DynamicResource Brush.Accent.Hover}" />
         <Setter Property="infra:ThemeProps.HoverBorderBrush" Value="{DynamicResource Brush.Accent.Hover}" />
         <Setter Property="infra:ThemeProps.PressBrush" Value="{DynamicResource Brush.Accent.Pressed}" />
+        <Setter Property="infra:ThemeProps.ReliefBrush" Value="{StaticResource Sheen.Raised}" />
     </Style>
 
     <Style x:Key="Button.Secondary" TargetType="Button" BasedOn="{StaticResource Button.Base}">
@@ -223,6 +230,7 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="infra:ThemeProps.HoverBrush" Value="{DynamicResource Brush.Surface.Hover}" />
         <Setter Property="infra:ThemeProps.HoverBorderBrush" Value="{DynamicResource Brush.Border.Strong}" />
+        <Setter Property="infra:ThemeProps.ReliefBrush" Value="{StaticResource Sheen.Raised}" />
     </Style>
 
     <Style x:Key="Button.Ghost" TargetType="Button" BasedOn="{StaticResource Button.Base}">
@@ -494,6 +502,10 @@
                                 Background="{DynamicResource Brush.Accent}"
                                 BorderBrush="{DynamicResource Brush.Accent}"
                                 BorderThickness="1"
+                                CornerRadius="11" />
+                        <Border x:Name="TrackRelief"
+                                IsHitTestVisible="False"
+                                Background="{StaticResource Sheen.Inset}"
                                 CornerRadius="11" />
                         <Ellipse x:Name="Thumb"
                                  Width="14" Height="14"
@@ -878,6 +890,14 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Large}" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <!-- Barely visible on purpose: enough to separate the card from the page,
+                     not enough to read as a floating panel. -->
+                <DropShadowEffect BlurRadius="16" ShadowDepth="3" Direction="270"
+                                  Opacity="0.28" Color="#000000" RenderingBias="Quality" />
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- ==================== Progress ==================== -->

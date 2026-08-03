@@ -46,8 +46,12 @@
                             Background="{DynamicResource Brush.Surface.Overlay}"
                             CornerRadius="{StaticResource Radius.Medium}"
                             TextElement.Foreground="{DynamicResource Brush.Text.Secondary}">
-                        <Path Data="{Binding Category, Converter={StaticResource CategoryToIcon}}"
-                              Style="{StaticResource IconPath}" />
+                        <Grid>
+                            <Border Background="{StaticResource Sheen.Raised}"
+                                    CornerRadius="{StaticResource Radius.Medium}" />
+                            <Path Data="{Binding Category, Converter={StaticResource CategoryToIcon}}"
+                                  Style="{StaticResource IconPath}" />
+                        </Grid>
                     </Border>
 
                     <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
@@ -234,7 +238,11 @@
                         CornerRadius="{StaticResource Radius.Medium}"
                         Background="{DynamicResource Brush.Surface.Overlay}"
                         TextElement.Foreground="{DynamicResource Brush.Text.Secondary}">
-                    <Path Data="{StaticResource Icon.Bluetooth}" Style="{StaticResource IconPath}" />
+                    <Grid>
+                        <Border Background="{StaticResource Sheen.Raised}"
+                                CornerRadius="{StaticResource Radius.Medium}" />
+                        <Path Data="{StaticResource Icon.Bluetooth}" Style="{StaticResource IconPath}" />
+                    </Grid>
                 </Border>
 
                 <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
@@ -279,11 +287,55 @@
             </Button>
         </Grid>
 
-        <!-- Scan progress -->
-        <ProgressBar Grid.Row="3"
-                     Style="{StaticResource ScanBar}"
-                     Margin="16,10,16,0"
-                     Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisibility}}" />
+        <!--
+            Scan progress. Switching to Settings mid-scan glides the bar up and out rather
+            than blinking it away: the host collapses its own height while the bar hangs
+            from the bottom edge, so the bar rides up with it and is clipped off the top.
+            Animating one plain property beats moving a transform for something this small.
+        -->
+        <Grid x:Name="ScanHost" Grid.Row="3"
+              Height="14"
+              ClipToBounds="True"
+              Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisibility}}">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsDevicesTab}" Value="False">
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Height"
+                                                         To="0" Duration="0:0:1.2">
+                                            <DoubleAnimation.EasingFunction>
+                                                <!-- Eases in, hurries through the middle,
+                                                     eases out. -->
+                                                <QuarticEase EasingMode="EaseInOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.EnterActions>
+                            <DataTrigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Height"
+                                                         To="14" Duration="0:0:1.2">
+                                            <DoubleAnimation.EasingFunction>
+                                                <QuarticEase EasingMode="EaseInOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.ExitActions>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+
+            <ProgressBar Style="{StaticResource ScanBar}"
+                         Margin="16,0,16,0"
+                         VerticalAlignment="Bottom" />
+        </Grid>
 
         <!-- ==================== Device list ==================== -->
         <Grid Grid.Row="4" Margin="0,8,0,0">

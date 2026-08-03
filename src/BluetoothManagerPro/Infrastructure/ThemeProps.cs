@@ -26,6 +26,14 @@ public static class ThemeProps
         DependencyProperty.RegisterAttached(
             "HoverBorderBrush", typeof(Brush), typeof(ThemeProps), new PropertyMetadata(null));
 
+    /// <summary>
+    /// Depth gradient laid over the fill. Left unset by default so buttons with no
+    /// background — ghost and icon ones — do not get a gradient floating over nothing.
+    /// </summary>
+    public static readonly DependencyProperty ReliefBrushProperty =
+        DependencyProperty.RegisterAttached(
+            "ReliefBrush", typeof(Brush), typeof(ThemeProps), new PropertyMetadata(null));
+
     public static void SetHoverBrush(DependencyObject element, Brush value)
         => element.SetValue(HoverBrushProperty, value);
 
@@ -43,4 +51,10 @@ public static class ThemeProps
 
     public static Brush? GetHoverBorderBrush(DependencyObject element)
         => (Brush?)element.GetValue(HoverBorderBrushProperty);
+
+    public static void SetReliefBrush(DependencyObject element, Brush value)
+        => element.SetValue(ReliefBrushProperty, value);
+
+    public static Brush? GetReliefBrush(DependencyObject element)
+        => (Brush?)element.GetValue(ReliefBrushProperty);
 }

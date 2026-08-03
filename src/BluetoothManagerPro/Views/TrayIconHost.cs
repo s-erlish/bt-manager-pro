@@ -3,7 +3,6 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using System.Windows.Threading;
 using BluetoothManagerPro.Services;
 using BluetoothManagerPro.ViewModels;
 
@@ -25,7 +24,6 @@ public sealed class TrayIconHost : IDisposable
     private readonly NotifyIcon _icon;
     private readonly MainViewModel _viewModel;
     private readonly ThemeService _theme;
-    private readonly DispatcherTimer _clickTimer;
 
     private TrayFlyoutWindow? _flyout;
     private Icon? _current;
@@ -41,14 +39,6 @@ public sealed class TrayIconHost : IDisposable
             Text = "Bluetooth Manager",
             Visible = true,
         };
-
-        // A double click always fires the single-click event first, so the single-click
-        // action waits out the system's double-click window before committing.
-        _clickTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(SystemInformation.DoubleClickTime + 40),
-        };
-        _clickTimer.Tick += OnClickTimerElapsed;
 
         _icon.MouseClick += OnIconClicked;
         _icon.MouseDoubleClick += OnIconDoubleClicked;
@@ -114,41 +104,44 @@ public sealed class TrayIconHost : IDisposable
 
     // ---- Clicks -------------------------------------------------------------
 
+    /// <summary>
+    /// Every click acts at once.
+    ///
+    /// Telling a single click apart from the first half of a double click means waiting out
+    /// the system's double-click interval, and half a second of nothing is exactly what a
+    /// tray icon must not do. So the single-click action runs immediately and the double
+    /// click simply supersedes it: with the window hidden, the flyout appears and is then
+    /// dismissed as the window opens — a brief flash, in exchange for the whole thing
+    /// feeling instant.
+    /// </summary>
     private void OnIconClicked(object? sender, MouseEventArgs e)
     {
         if (e.Button == MouseButtons.Right)
         {
-            // Right click has no double-click meaning, so it can act immediately.
             ShowFlyout();
             return;
         }
 
-        if (e.Button == MouseButtons.Left)
+        if (e.Button != MouseButtons.Left)
         {
-            _clickTimer.Stop();
-            _clickTimer.Start();
+            return;
         }
-    }
-
-    private void OnIconDoubleClicked(object? sender, MouseEventArgs e)
-    {
-        _clickTimer.Stop();
-        _flyout?.Hide();
-        ShowWindowRequested?.Invoke();
-    }
-
-    private void OnClickTimerElapsed(object? sender, EventArgs e)
-    {
-        _clickTimer.Stop();
 
         // With the window up, a single click puts it away; otherwise it opens the flyout.
         if (IsMainWindowVisible?.Invoke() == true)
         {
+            _flyout?.Hide();
             HideWindowRequested?.Invoke();
             return;
         }
 
         ShowFlyout();
+    }
+
+    private void OnIconDoubleClicked(object? sender, MouseEventArgs e)
+    {
+        _flyout?.Hide();
+        ShowWindowRequested?.Invoke();
     }
 
     private void ShowFlyout()
@@ -180,8 +173,6 @@ public sealed class TrayIconHost : IDisposable
         }
 
         _disposed = true;
-        _clickTimer.Stop();
-        _clickTimer.Tick -= OnClickTimerElapsed;
         _viewModel.PropertyChanged -= OnViewModelChanged;
         _theme.Changed -= Refresh;
 
