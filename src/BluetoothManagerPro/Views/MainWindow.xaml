@@ -186,16 +186,13 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- ==================== Title bar ==================== -->
-        <Grid Grid.Row="0" Height="42" Background="{DynamicResource Brush.Surface.Base}">
+        <Grid x:Name="TitleBar" Grid.Row="0" Height="42" Background="{DynamicResource Brush.Surface.Base}">
             <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
                 <Path Data="{StaticResource Icon.Bluetooth}"
                       Style="{StaticResource IconPath.Small}"
@@ -223,9 +220,23 @@
             </StackPanel>
         </Grid>
 
+        <!--
+            Everything that swaps between tabs lives in one host so a single opacity
+            animation can fade the lot; the panes inside are exchanged at the trough of
+            that fade, which is why the switch reads as a dissolve rather than a cut.
+        -->
+        <Grid x:Name="ContentHost" Grid.Row="1">
+
+            <Grid x:Name="DevicesPane">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
         <!-- ==================== Radio card ==================== -->
-        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="16,4,16,0" Padding="14,12"
-                Visibility="{Binding IsDevicesTab, Converter={StaticResource BoolToVisibility}}">
+        <Border Grid.Row="0" Style="{StaticResource Card}" Margin="16,4,16,0" Padding="14,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -263,8 +274,7 @@
         </Border>
 
         <!-- ==================== Toolbar ==================== -->
-        <Grid Grid.Row="2" Margin="16,12,16,0"
-              Visibility="{Binding IsDevicesTab, Converter={StaticResource BoolToVisibility}}">
+        <Grid Grid.Row="1" Margin="16,12,16,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -288,59 +298,17 @@
         </Grid>
 
         <!--
-            Scan progress. Switching to Settings mid-scan glides the bar up and out rather
-            than blinking it away: the host collapses its own height while the bar hangs
-            from the bottom edge, so the bar rides up with it and is clipped off the top.
-            Animating one plain property beats moving a transform for something this small.
+            Reserves the strip the scan bar floats over, and gives the code-behind a
+            measurable anchor for the bar's resting position. The bar is not in here: it
+            has to travel across the whole window, so it is an overlay further down.
         -->
-        <Grid x:Name="ScanHost" Grid.Row="3"
-              Height="14"
-              ClipToBounds="True"
-              Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisibility}}">
-            <Grid.Style>
-                <Style TargetType="Grid">
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsDevicesTab}" Value="False">
-                            <DataTrigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetProperty="Height"
-                                                         To="0" Duration="0:0:1.2">
-                                            <DoubleAnimation.EasingFunction>
-                                                <!-- Eases in, hurries through the middle,
-                                                     eases out. -->
-                                                <QuarticEase EasingMode="EaseInOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </DataTrigger.EnterActions>
-                            <DataTrigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetProperty="Height"
-                                                         To="14" Duration="0:0:1.2">
-                                            <DoubleAnimation.EasingFunction>
-                                                <QuarticEase EasingMode="EaseInOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </DataTrigger.ExitActions>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Grid.Style>
-
-            <ProgressBar Style="{StaticResource ScanBar}"
-                         Margin="16,0,16,0"
-                         VerticalAlignment="Bottom" />
-        </Grid>
+        <Border x:Name="ScanSpacer" Grid.Row="2"
+                Height="14"
+                Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisibility}}" />
 
         <!-- ==================== Device list ==================== -->
-        <Grid Grid.Row="4" Margin="0,8,0,0">
-            <ScrollViewer Padding="10,0,6,0"
-                          Visibility="{Binding IsDevicesTab, Converter={StaticResource BoolToVisibility}}">
+        <Grid Grid.Row="3" Margin="0,8,0,0">
+            <ScrollViewer Padding="10,0,6,0">
                 <ItemsControl ItemsSource="{Binding DevicesView}"
                               ItemTemplate="{StaticResource DeviceRowTemplate}"
                               Margin="6,0,6,12">
@@ -365,13 +333,9 @@
                     <Style TargetType="StackPanel">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
-                            <MultiDataTrigger>
-                                <MultiDataTrigger.Conditions>
-                                    <Condition Binding="{Binding IsListEmpty}" Value="True" />
-                                    <Condition Binding="{Binding IsDevicesTab}" Value="True" />
-                                </MultiDataTrigger.Conditions>
+                            <DataTrigger Binding="{Binding IsListEmpty}" Value="True">
                                 <Setter Property="Visibility" Value="Visible" />
-                            </MultiDataTrigger>
+                            </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </StackPanel.Style>
@@ -392,9 +356,11 @@
                            Margin="0,4,0,0" />
             </StackPanel>
 
+                </Grid>
+            </Grid>
+
             <!-- ==================== Settings panel ==================== -->
-            <ScrollViewer Padding="16,0"
-                          Visibility="{Binding IsSettingsTab, Converter={StaticResource BoolToVisibility}}">
+            <ScrollViewer x:Name="SettingsPane" Padding="16,0" Visibility="Collapsed">
                 <StackPanel Margin="0,4,0,16">
 
                     <!-- Themes lead the settings: it is the thing people come here to change. -->
@@ -506,7 +472,7 @@
         </Grid>
 
         <!-- ==================== Status bar ==================== -->
-        <Border Grid.Row="5"
+        <Border Grid.Row="2"
                 Background="{DynamicResource Brush.Surface.Raised}"
                 BorderBrush="{DynamicResource Brush.Border.Subtle}"
                 BorderThickness="0,1,0,0"
@@ -527,7 +493,7 @@
         </Border>
 
         <!-- ==================== Bottom tabs ==================== -->
-        <Border Grid.Row="6"
+        <Border Grid.Row="3"
                 Background="{DynamicResource Brush.Surface.Raised}"
                 BorderBrush="{DynamicResource Brush.Border.Subtle}"
                 BorderThickness="0,1,0,0"
@@ -559,5 +525,18 @@
                 </RadioButton>
             </Grid>
         </Border>
+
+        <!--
+            The scan bar. Declared last and spanning every row, so it paints over the whole
+            window and can glide across it while the tabs dissolve underneath. Its position
+            is driven from the code-behind, which owns the choreography.
+        -->
+        <ProgressBar x:Name="ScanOverlay"
+                     Grid.Row="0" Grid.RowSpan="4"
+                     Style="{StaticResource ScanBar}"
+                     VerticalAlignment="Top"
+                     Margin="16,0,16,0"
+                     IsHitTestVisible="False"
+                     Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisibility}}" />
     </Grid>
 </Window>

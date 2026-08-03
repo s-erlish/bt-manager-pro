@@ -42,11 +42,11 @@ public sealed class ThemeService
     public Color AccentColor { get; private set; } = AccentPreset.All[0].Seed;
 
     /// <summary>
-    /// Accent as it would render on a dark surface. The tray icon sits on the Windows
-    /// taskbar, not on our own background, so it must not follow the light theme down into
+    /// Accent as it would render on a dark surface. The tray and taskbar icons sit on Windows
+    /// chrome, not on our own background, so they must not follow the light theme down into
     /// a shade that disappears against dark chrome.
     /// </summary>
-    public Color TrayAccentColor => SwatchFor(Accent, ThemeMode.Dark);
+    public Color ShellAccentColor => SwatchFor(Accent, ThemeMode.Dark);
 
     /// <summary>Raised after the palette changes, so the tray icon can be redrawn.</summary>
     public event Action? Changed;

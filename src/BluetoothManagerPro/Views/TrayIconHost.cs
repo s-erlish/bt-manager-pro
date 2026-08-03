@@ -71,7 +71,7 @@ public sealed class TrayIconHost : IDisposable
         Color color = radioOff
             ? OffColor
             : connected > 0
-                ? TrayIconRenderer.ToDrawing(_theme.TrayAccentColor)
+                ? TrayIconRenderer.ToDrawing(_theme.ShellAccentColor)
                 : IdleColor;
 
         Icon rendered = TrayIconRenderer.Render(SystemInformation.SmallIconSize.Width, color, radioOff);
