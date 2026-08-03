@@ -1,0 +1,53 @@
+name: build
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # Windows is the only place the result can actually be validated end to end,
+    # even though the project compiles cross-platform.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build
+        run: dotnet build src/BluetoothManagerPro/BluetoothManagerPro.csproj -c Release
+
+      - name: Check XAML resource keys
+        shell: pwsh
+        run: python tools/check_xaml_resources.py
+
+      - name: Verify icons are reproducible
+        shell: pwsh
+        run: |
+          python tools/make_icons.py
+          git diff --exit-code -- src/BluetoothManagerPro/Assets
+
+      - name: Publish (framework-dependent)
+        run: >
+          dotnet publish src/BluetoothManagerPro/BluetoothManagerPro.csproj
+          -c Release -r win-x64 --self-contained false
+          -o publish/win-x64
+
+      - name: Publish (self-contained)
+        run: >
+          dotnet publish src/BluetoothManagerPro/BluetoothManagerPro.csproj
+          -c Release -r win-x64 --self-contained true
+          -o publish/win-x64-standalone
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BluetoothManagerPro-win-x64
+          path: |
+            publish/win-x64/BluetoothManagerPro.exe
+            publish/win-x64-standalone/BluetoothManagerPro.exe
+          if-no-files-found: error

@@ -1,0 +1,100 @@
+<!--
+    Bluetooth Manager Pro — design tokens.
+
+    Dark, near-neutral greys with a single warm ochre accent.
+    Every text token was checked for WCAG AA contrast against Surface.Base (#141416):
+        Text.Primary    #F2F2F4  ~16.0:1
+        Text.Secondary  #A0A0AA  ~ 6.9:1
+        Text.Tertiary   #85858F  ~ 4.9:1
+        Accent          #D08A2E  ~ 6.3:1
+        Positive        #3FB27A  ~ 6.7:1
+        Negative        #E06055  ~ 5.5:1
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- ==================== Raw colours ==================== -->
+
+    <Color x:Key="Color.Surface.Base">#FF141416</Color>
+    <Color x:Key="Color.Surface.Raised">#FF1B1B1F</Color>
+    <Color x:Key="Color.Surface.Overlay">#FF212127</Color>
+    <Color x:Key="Color.Surface.Hover">#FF2A2A31</Color>
+    <Color x:Key="Color.Surface.Pressed">#FF32323A</Color>
+
+    <Color x:Key="Color.Border.Subtle">#FF26262C</Color>
+    <Color x:Key="Color.Border.Default">#FF32323A</Color>
+    <Color x:Key="Color.Border.Strong">#FF44444F</Color>
+
+    <Color x:Key="Color.Text.Primary">#FFF2F2F4</Color>
+    <Color x:Key="Color.Text.Secondary">#FFA0A0AA</Color>
+    <Color x:Key="Color.Text.Tertiary">#FF85858F</Color>
+    <Color x:Key="Color.Text.Disabled">#FF5A5A64</Color>
+    <Color x:Key="Color.Text.OnAccent">#FF17120A</Color>
+
+    <!-- Ochre. #D08A2E is the base; hover lifts, pressed sinks. -->
+    <Color x:Key="Color.Accent">#FFD08A2E</Color>
+    <Color x:Key="Color.Accent.Hover">#FFE29B3D</Color>
+    <Color x:Key="Color.Accent.Pressed">#FFB0731F</Color>
+    <Color x:Key="Color.Accent.Muted">#FF3A2C16</Color>
+    <Color x:Key="Color.Accent.Faint">#FF241D12</Color>
+
+    <Color x:Key="Color.Positive">#FF3FB27A</Color>
+    <Color x:Key="Color.Negative">#FFE06055</Color>
+    <Color x:Key="Color.Negative.Muted">#FF3A1F1D</Color>
+    <Color x:Key="Color.Warning">#FFE0B341</Color>
+
+    <!-- ==================== Brushes ==================== -->
+
+    <SolidColorBrush x:Key="Brush.Surface.Base" Color="{StaticResource Color.Surface.Base}" />
+    <SolidColorBrush x:Key="Brush.Surface.Raised" Color="{StaticResource Color.Surface.Raised}" />
+    <SolidColorBrush x:Key="Brush.Surface.Overlay" Color="{StaticResource Color.Surface.Overlay}" />
+    <SolidColorBrush x:Key="Brush.Surface.Hover" Color="{StaticResource Color.Surface.Hover}" />
+    <SolidColorBrush x:Key="Brush.Surface.Pressed" Color="{StaticResource Color.Surface.Pressed}" />
+    <SolidColorBrush x:Key="Brush.Surface.Transparent" Color="#00000000" />
+
+    <SolidColorBrush x:Key="Brush.Border.Subtle" Color="{StaticResource Color.Border.Subtle}" />
+    <SolidColorBrush x:Key="Brush.Border.Default" Color="{StaticResource Color.Border.Default}" />
+    <SolidColorBrush x:Key="Brush.Border.Strong" Color="{StaticResource Color.Border.Strong}" />
+
+    <SolidColorBrush x:Key="Brush.Text.Primary" Color="{StaticResource Color.Text.Primary}" />
+    <SolidColorBrush x:Key="Brush.Text.Secondary" Color="{StaticResource Color.Text.Secondary}" />
+    <SolidColorBrush x:Key="Brush.Text.Tertiary" Color="{StaticResource Color.Text.Tertiary}" />
+    <SolidColorBrush x:Key="Brush.Text.Disabled" Color="{StaticResource Color.Text.Disabled}" />
+    <SolidColorBrush x:Key="Brush.Text.OnAccent" Color="{StaticResource Color.Text.OnAccent}" />
+
+    <SolidColorBrush x:Key="Brush.Accent" Color="{StaticResource Color.Accent}" />
+    <SolidColorBrush x:Key="Brush.Accent.Hover" Color="{StaticResource Color.Accent.Hover}" />
+    <SolidColorBrush x:Key="Brush.Accent.Pressed" Color="{StaticResource Color.Accent.Pressed}" />
+    <SolidColorBrush x:Key="Brush.Accent.Muted" Color="{StaticResource Color.Accent.Muted}" />
+    <SolidColorBrush x:Key="Brush.Accent.Faint" Color="{StaticResource Color.Accent.Faint}" />
+
+    <SolidColorBrush x:Key="Brush.Positive" Color="{StaticResource Color.Positive}" />
+    <SolidColorBrush x:Key="Brush.Negative" Color="{StaticResource Color.Negative}" />
+    <SolidColorBrush x:Key="Brush.Negative.Muted" Color="{StaticResource Color.Negative.Muted}" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />
+
+    <!-- ==================== Geometry ==================== -->
+    <!-- 4px spacing grid; radii stay small so the UI reads as precise, not bubbly. -->
+
+    <CornerRadius x:Key="Radius.Small">4</CornerRadius>
+    <CornerRadius x:Key="Radius.Medium">6</CornerRadius>
+    <CornerRadius x:Key="Radius.Large">10</CornerRadius>
+    <CornerRadius x:Key="Radius.Pill">999</CornerRadius>
+
+    <sys:Double x:Key="Size.Icon.Small">14</sys:Double>
+    <sys:Double x:Key="Size.Icon.Medium">18</sys:Double>
+    <sys:Double x:Key="Size.Icon.Large">22</sys:Double>
+
+    <!-- ==================== Typography ==================== -->
+    <!-- Segoe UI Variable on Windows 11, graceful fallback to Segoe UI on Windows 10. -->
+
+    <FontFamily x:Key="Font.Display">Segoe UI Variable Display, Segoe UI Semibold, Segoe UI</FontFamily>
+    <FontFamily x:Key="Font.Text">Segoe UI Variable Text, Segoe UI</FontFamily>
+
+    <sys:Double x:Key="Font.Size.Caption">11</sys:Double>
+    <sys:Double x:Key="Font.Size.Body">13</sys:Double>
+    <sys:Double x:Key="Font.Size.Subtitle">15</sys:Double>
+    <sys:Double x:Key="Font.Size.Title">20</sys:Double>
+
+</ResourceDictionary>
