@@ -16,16 +16,19 @@ namespace BluetoothManagerPro.Services;
 /// an unreadable combination — text and accent tokens are pushed until they clear WCAG AA
 /// against the surface they sit on.
 ///
-/// The brushes are created once and never replaced. XAML holds references to these exact
-/// objects, so switching themes animates their colours in place and the whole window
-/// cross-fades instead of snapping.
+/// Applying a palette replaces the brush resources outright, which is the one mechanism
+/// guaranteed to push new colours through every DynamicResource reference. The cross-fade
+/// rides on top as an animation from the previous colour, so the visual polish can never
+/// cost correctness.
 /// </summary>
 public sealed class ThemeService
 {
     private static readonly Duration TransitionDuration = new(TimeSpan.FromMilliseconds(520));
 
     private readonly ResourceDictionary _resources;
-    private readonly Dictionary<string, SolidColorBrush> _brushes = new(StringComparer.Ordinal);
+
+    /// <summary>Colour each key currently shows, so a change can be faded from it.</summary>
+    private readonly Dictionary<string, Color> _current = new(StringComparer.Ordinal);
 
     private bool _initialised;
 
@@ -60,30 +63,35 @@ public sealed class ThemeService
         bool animate = _initialised;
         foreach ((string key, Color color) in palette)
         {
-            if (_brushes.TryGetValue(key, out SolidColorBrush? brush))
-            {
-                if (animate)
-                {
-                    brush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation
-                    {
-                        To = color,
-                        Duration = TransitionDuration,
-                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-                        FillBehavior = FillBehavior.HoldEnd,
-                    });
-                }
-                else
-                {
-                    brush.Color = color;
-                }
+            // A fresh brush is put in the dictionary every time rather than the existing
+            // one being recoloured. Mutating a shared brush only works while nothing has
+            // frozen it, and a frozen brush fails silently — the palette simply stops
+            // changing. Replacing the resource is what actually forces every
+            // DynamicResource reference to re-resolve, and it cannot be defeated.
+            var brush = new SolidColorBrush(color);
+            _resources[key] = brush;
 
-                continue;
+            // The fade is a bonus on top of an already-correct value: the brush starts at
+            // its target, and the animation merely walks it there from the old colour with
+            // FillBehavior.Stop, so if it never runs the colour is right anyway.
+            //
+            // IsFrozen is checked because animating an immutable brush throws. Whether the
+            // dictionary froze it on insert is a WPF implementation detail; the palette
+            // must not depend on the answer, so a frozen brush simply forgoes the fade.
+            if (animate && !brush.IsFrozen
+                && _current.TryGetValue(key, out Color previous) && previous != color)
+            {
+                brush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation
+                {
+                    From = previous,
+                    To = color,
+                    Duration = TransitionDuration,
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+                    FillBehavior = FillBehavior.Stop,
+                });
             }
 
-            // Not frozen: these are the objects XAML binds to, and they must stay animatable.
-            var created = new SolidColorBrush(color);
-            _brushes[key] = created;
-            _resources[key] = created;
+            _current[key] = color;
         }
 
         if (!_initialised)

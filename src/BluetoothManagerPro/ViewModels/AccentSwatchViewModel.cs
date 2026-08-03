@@ -9,13 +9,14 @@ namespace BluetoothManagerPro.ViewModels;
 public sealed class AccentSwatchViewModel : ObservableObject
 {
     private readonly Action<AccentPreset> _select;
+    private SolidColorBrush _swatch;
     private bool _isSelected;
 
     public AccentSwatchViewModel(AccentPreset preset, Action<AccentPreset> select)
     {
         Preset = preset;
         _select = select;
-        Swatch = new SolidColorBrush(preset.Seed);
+        _swatch = new SolidColorBrush(preset.Seed);
     }
 
     public AccentPreset Preset { get; }
@@ -26,7 +27,11 @@ public sealed class AccentSwatchViewModel : ObservableObject
     /// The colour as this accent would actually render in the current mode, not the raw
     /// seed — so the dots preview what picking one really does.
     /// </summary>
-    public SolidColorBrush Swatch { get; }
+    public SolidColorBrush Swatch
+    {
+        get => _swatch;
+        private set => SetProperty(ref _swatch, value);
+    }
 
     /// <summary>
     /// Two-way bound to the swatch's IsChecked. Selecting is what applies the theme;
@@ -46,8 +51,13 @@ public sealed class AccentSwatchViewModel : ObservableObject
         }
     }
 
-    /// <summary>Repaints the preview after a light/dark switch.</summary>
-    public void Preview(ThemeMode mode) => Swatch.Color = Services.ThemeService.SwatchFor(Preset, mode);
+    /// <summary>
+    /// Repaints the preview after a light/dark switch. The brush is replaced rather than
+    /// recoloured for the same reason the palette is: a frozen brush ignores mutation and
+    /// fails silently.
+    /// </summary>
+    public void Preview(ThemeMode mode)
+        => Swatch = new SolidColorBrush(Services.ThemeService.SwatchFor(Preset, mode));
 
     internal void SetSelectedQuietly(bool value) => SetProperty(ref _isSelected, value, nameof(IsSelected));
 }
