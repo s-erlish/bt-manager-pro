@@ -34,3 +34,6 @@ Desktop.ini
 # Local tooling
 .dotnet/
 .tools/
+
+# Temp project the WPF markup compiler drops beside the real one
+*_wpftmp.csproj

@@ -53,8 +53,14 @@
 
 ## Установка
 
-Готового бинарника пока нет — собирается одной командой.
 Требуется Windows 10 версии 2004 (сборка 19041) или новее и **64-разрядная** система.
+
+**Скачать готовое.** Каждая сборка выкладывает архив
+`BluetoothManagerPro-win-x64.zip` — вкладка [Actions](https://github.com/s-erlish/bt-manager-pro/actions),
+последний прогон, раздел Artifacts. Внутри `BluetoothManagerPro.exe`, который ничего не
+требует доустанавливать. Распаковать и запустить — установка не нужна.
+
+**Собрать самому.**
 
 ```powershell
 git clone https://github.com/s-erlish/bt-manager-pro.git
@@ -62,8 +68,9 @@ cd bt-manager-pro
 .\build.ps1 -SelfContained
 ```
 
-Готовый файл: `publish\win-x64\BluetoothManagerPro.exe`. Его можно положить куда угодно
-и запустить — установка не требуется. Настройки хранятся в
+Готовый файл: `publish\win-x64\BluetoothManagerPro.exe`.
+
+Настройки в обоих случаях хранятся в
 `%LOCALAPPDATA%\BluetoothManagerPro\settings.json`.
 
 Подробности сборки — в [docs/BUILD.md](docs/BUILD.md).
