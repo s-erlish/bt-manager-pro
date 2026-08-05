@@ -1,0 +1,1130 @@
+<!--
+    Control styles. Minimal surfaces, one accent, no gradients.
+
+    Interaction states are drawn as overlay layers whose opacity animates, never as a
+    brush swap: a swap cannot be eased and reads as a flicker. Every state fades out more
+    slowly than it fades in, which is what makes the interface feel unhurried.
+
+    Tokens.xaml is merged here so the parse-time StaticResource lookups (radii, fonts,
+    durations) resolve no matter how App.xaml orders its dictionaries. Colours are not in
+    there — they come from ThemeService via DynamicResource so themes can be switched live.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:infra="clr-namespace:BluetoothManagerPro.Infrastructure">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/Themes/Tokens.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/Themes/Icons.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- ==================== State storyboards ==================== -->
+    <!--
+        Every interaction state is drawn as an overlay layer whose opacity animates. Lite
+        mode makes those arrivals instant, and the switch is carried by ThemeProps.Animated,
+        an inherited property set on each window root — so it reaches every control without
+        any template knowing where the setting lives.
+
+        The split between entering and leaving a state is not stylistic; it is the whole
+        reason this works.
+
+          * Entering is chosen by mode. Two MultiTriggers — "state and animated", "state and
+            lite" — each with EnterActions only.
+
+          * Leaving is driven by a plain trigger on the state alone, never by the mode.
+
+        A trigger fires its ExitActions whenever its condition set stops matching, and it
+        cannot tell why. When the mode changed, the branch being left read that as the state
+        going away and dutifully faded the layer out — after the branch being entered had
+        already lit it — so every checkbox, switch and swatch went blank the moment lite
+        mode was turned off. Ordering cannot fix that: whichever branch runs last wins, and
+        the two directions want opposite answers.
+
+        With the mode out of the exit condition there is nothing to collide: switching modes
+        re-runs only an EnterAction, which drives the layer to the value it is already
+        showing. The cost is that a state still fades out in lite mode, since one exit
+        storyboard has to serve both — a third of a second on an explicit click, and the
+        only place lite mode does not get its way.
+
+        The storyboards are resources rather than inline copies because Storyboard.TargetName
+        resolves against the template being animated: one "fade the layer named Hover"
+        storyboard serves every template that has a layer by that name.
+    -->
+
+    <!--
+        Every animation below is decoration and nothing else.
+
+        The state itself is carried by Setters in the triggers. The storyboards only walk
+        the property to the value the Setter already gives it, and every one of them ends
+        with FillBehavior="Stop" — so when it finishes it hands the property straight back.
+        An animation here can be dropped, mistimed or never started and the control still
+        looks right; that is the point.
+
+        This is not belt and braces. Three separate defects came from the opposite
+        arrangement, where a held animation *was* the state: switching lite mode off blanked
+        every checkbox, both tabs stayed lit at once, and no switch ever moved. The property
+        system's own precedence rules are simple and total — a Setter applies whenever its
+        trigger is active — while whether a given storyboard reaches a given target depends
+        on details of freezing, name scopes and action ordering that are not worth betting a
+        working interface on.
+
+        Exits carry From explicitly, because by the time an ExitAction runs the Setter that
+        held the value is already gone.
+
+        TargetName resolves against the template being animated, so one "fade the layer
+        named Hover" storyboard serves every template that has a layer by that name.
+    -->
+
+    <Storyboard x:Key="SB.Hover.In">
+        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <!-- Lingers on the way out; that is the fade the eye reads as soft. -->
+    <Storyboard x:Key="SB.Hover.Out">
+        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity"
+                         From="1" To="0" Duration="{StaticResource Motion.Slow}" FillBehavior="Stop">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Press.In">
+        <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Fast}" FillBehavior="Stop" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Press.Out">
+        <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity"
+                         From="1" To="0" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Selected.In">
+        <DoubleAnimation Storyboard.TargetName="Selected" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Selected.Out">
+        <DoubleAnimation Storyboard.TargetName="Selected" Storyboard.TargetProperty="Opacity"
+                         From="1" To="0" Duration="{StaticResource Motion.Slow}" FillBehavior="Stop">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <!-- Fill plus tick: the swatch and the checkbox both light two layers at once. -->
+    <Storyboard x:Key="SB.Mark.In">
+        <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop" />
+        <DoubleAnimation Storyboard.TargetName="Tick" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Mark.Out">
+        <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity"
+                         From="1" To="0" Duration="{StaticResource Motion.Slow}" FillBehavior="Stop" />
+        <DoubleAnimation Storyboard.TargetName="Tick" Storyboard.TargetProperty="Opacity"
+                         From="1" To="0" Duration="{StaticResource Motion.Slow}" FillBehavior="Stop" />
+    </Storyboard>
+
+    <!--
+        The swatch dot swells by giving back its margin rather than by scaling: a storyboard
+        held in a dictionary cannot animate a transform declared in a template. 7 at rest
+        inside a 44px button leaves a 30px dot; 5.2 makes it 33.6, the same 12%.
+    -->
+    <Storyboard x:Key="SB.Swell.In">
+        <ThicknessAnimation Storyboard.TargetName="Dot" Storyboard.TargetProperty="Margin"
+                            To="5.2" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop">
+            <ThicknessAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </ThicknessAnimation.EasingFunction>
+        </ThicknessAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Swell.Out">
+        <ThicknessAnimation Storyboard.TargetName="Dot" Storyboard.TargetProperty="Margin"
+                            From="5.2" To="7" Duration="{StaticResource Motion.Slow}" FillBehavior="Stop">
+            <ThicknessAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </ThicknessAnimation.EasingFunction>
+        </ThicknessAnimation>
+    </Storyboard>
+
+    <!-- Thumb travel: 4 at rest, 22 thrown. A margin, for the reason given above. -->
+    <Storyboard x:Key="SB.Switch.In">
+        <DoubleAnimation Storyboard.TargetName="TrackOn" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop" />
+        <DoubleAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop" />
+        <ThicknessAnimation Storyboard.TargetName="Thumb" Storyboard.TargetProperty="Margin"
+                            To="22,0,0,0" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop">
+            <ThicknessAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </ThicknessAnimation.EasingFunction>
+        </ThicknessAnimation>
+        <ThicknessAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Margin"
+                            To="22,0,0,0" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop">
+            <ThicknessAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </ThicknessAnimation.EasingFunction>
+        </ThicknessAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Switch.Out">
+        <DoubleAnimation Storyboard.TargetName="TrackOn" Storyboard.TargetProperty="Opacity"
+                         From="1" To="0" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop" />
+        <DoubleAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Opacity"
+                         From="1" To="0" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop" />
+        <ThicknessAnimation Storyboard.TargetName="Thumb" Storyboard.TargetProperty="Margin"
+                            From="22,0,0,0" To="4,0,0,0" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop">
+            <ThicknessAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </ThicknessAnimation.EasingFunction>
+        </ThicknessAnimation>
+        <ThicknessAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Margin"
+                            From="22,0,0,0" To="4,0,0,0" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop">
+            <ThicknessAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </ThicknessAnimation.EasingFunction>
+        </ThicknessAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Focus.In">
+        <DoubleAnimation Storyboard.TargetName="Focused" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}" FillBehavior="Stop" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Focus.Out">
+        <DoubleAnimation Storyboard.TargetName="Focused" Storyboard.TargetProperty="Opacity"
+                         From="1" To="0" Duration="{StaticResource Motion.Slow}" FillBehavior="Stop" />
+    </Storyboard>
+
+    <!-- ==================== Relief ==================== -->
+    <!--
+        The depth gradients as a style rather than a bare brush reference, so lite mode can
+        take them away in one place. Applied to the sheen layer, never to the surface
+        itself, which keeps the colour underneath exactly as the palette computed it.
+    -->
+
+    <Style x:Key="Relief.Raised" TargetType="Border">
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Background" Value="{StaticResource Sheen.Raised}" />
+        <Style.Triggers>
+            <Trigger Property="infra:ThemeProps.Animated" Value="False">
+                <Setter Property="Background" Value="{x:Null}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="Relief.Inset" TargetType="Border">
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Background" Value="{StaticResource Sheen.Inset}" />
+        <Style.Triggers>
+            <Trigger Property="infra:ThemeProps.Animated" Value="False">
+                <Setter Property="Background" Value="{x:Null}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ==================== Focus ==================== -->
+
+    <Style x:Key="FocusRing">
+        <Setter Property="Control.Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Rectangle Margin="-3"
+                               RadiusX="7" RadiusY="7"
+                               Stroke="{DynamicResource Brush.Accent}"
+                               StrokeThickness="1.5"
+                               SnapsToDevicePixels="True" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ==================== Icons ==================== -->
+    <!-- Stroke follows the inherited foreground, so an icon recolours with its parent. -->
+
+    <Style x:Key="IconPath" TargetType="Path">
+        <Setter Property="Stroke"
+                Value="{Binding RelativeSource={RelativeSource Self}, Path=(TextElement.Foreground)}" />
+        <Setter Property="StrokeThickness" Value="1.6" />
+        <Setter Property="StrokeStartLineCap" Value="Round" />
+        <Setter Property="StrokeEndLineCap" Value="Round" />
+        <Setter Property="StrokeLineJoin" Value="Round" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Width" Value="{StaticResource Size.Icon.Medium}" />
+        <Setter Property="Height" Value="{StaticResource Size.Icon.Medium}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="IconPath.Small" TargetType="Path" BasedOn="{StaticResource IconPath}">
+        <Setter Property="StrokeThickness" Value="1.8" />
+        <Setter Property="Width" Value="{StaticResource Size.Icon.Small}" />
+        <Setter Property="Height" Value="{StaticResource Size.Icon.Small}" />
+    </Style>
+
+    <Style x:Key="IconPath.Large" TargetType="Path" BasedOn="{StaticResource IconPath}">
+        <Setter Property="StrokeThickness" Value="1.5" />
+        <Setter Property="Width" Value="{StaticResource Size.Icon.Large}" />
+        <Setter Property="Height" Value="{StaticResource Size.Icon.Large}" />
+    </Style>
+
+    <!-- ==================== Text ==================== -->
+
+    <Style x:Key="Text.Subtitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Text}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.Size.Subtitle}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    </Style>
+
+    <Style x:Key="Text.Body" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Text}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.Size.Body}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+    </Style>
+
+    <Style x:Key="Text.Secondary" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+    </Style>
+
+    <Style x:Key="Text.Caption" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Text}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.Size.Caption}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Tertiary}" />
+    </Style>
+
+    <Style x:Key="Text.SectionHeader" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Tertiary}" />
+    </Style>
+
+    <!-- ==================== Buttons ==================== -->
+
+    <Style x:Key="Button.Base" TargetType="ButtonBase">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Text}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.Size.Body}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Padding" Value="14,7" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Transparent}" />
+        <Setter Property="infra:ThemeProps.HoverBrush" Value="{DynamicResource Brush.Surface.Hover}" />
+        <Setter Property="infra:ThemeProps.PressBrush" Value="{DynamicResource Brush.Surface.Pressed}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ButtonBase">
+                    <Grid x:Name="Root">
+                        <Border x:Name="Fill"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{StaticResource Radius.Medium}" />
+
+                        <!-- Hover and press are separate layers so they can cross-fade
+                             independently instead of fighting over one background. -->
+                        <Border x:Name="Hover"
+                                Opacity="0"
+                                CornerRadius="{StaticResource Radius.Medium}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Background="{Binding Path=(infra:ThemeProps.HoverBrush), RelativeSource={RelativeSource TemplatedParent}}"
+                                BorderBrush="{Binding Path=(infra:ThemeProps.HoverBorderBrush), RelativeSource={RelativeSource TemplatedParent}}" />
+
+                        <Border x:Name="Press"
+                                Opacity="0"
+                                CornerRadius="{StaticResource Radius.Medium}"
+                                Background="{Binding Path=(infra:ThemeProps.PressBrush), RelativeSource={RelativeSource TemplatedParent}}" />
+
+                        <!-- Sits above the state layers so the depth survives hover. -->
+                        <Border x:Name="Relief"
+                                IsHitTestVisible="False"
+                                CornerRadius="{StaticResource Radius.Medium}"
+                                Background="{Binding Path=(infra:ThemeProps.ReliefBrush), RelativeSource={RelativeSource TemplatedParent}}" />
+
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          RecognizesAccessKey="True" />
+                    </Grid>
+
+                    <ControlTemplate.Triggers>
+                        <!-- The state is the Setter; the storyboard only walks the property to the value it
+                             already has, then hands it back. Lite mode simply has no fade. -->
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Hover" Property="Opacity" Value="1" />
+                            <Trigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.Out}" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.In}" />
+                            </MultiTrigger.EnterActions>
+                        </MultiTrigger>
+
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Press" Property="Opacity" Value="1" />
+                            <Trigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Press.Out}" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsPressed" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Press.In}" />
+                            </MultiTrigger.EnterActions>
+                        </MultiTrigger>
+
+                        <!-- Relief is decoration; lite mode drops the whole layer. -->
+                        <Trigger Property="infra:ThemeProps.Animated" Value="False">
+                            <Setter TargetName="Relief" Property="Background" Value="{x:Null}" />
+                        </Trigger>
+
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.4" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Filled accent: exactly one per screen region. -->
+    <Style x:Key="Button.Primary" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.OnAccent}" />
+        <Setter Property="infra:ThemeProps.HoverBrush" Value="{DynamicResource Brush.Accent.Hover}" />
+        <Setter Property="infra:ThemeProps.HoverBorderBrush" Value="{DynamicResource Brush.Accent.Hover}" />
+        <Setter Property="infra:ThemeProps.PressBrush" Value="{DynamicResource Brush.Accent.Pressed}" />
+        <Setter Property="infra:ThemeProps.ReliefBrush" Value="{StaticResource Sheen.Raised}" />
+    </Style>
+
+    <Style x:Key="Button.Secondary" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Overlay}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+        <Setter Property="infra:ThemeProps.HoverBrush" Value="{DynamicResource Brush.Surface.Hover}" />
+        <Setter Property="infra:ThemeProps.HoverBorderBrush" Value="{DynamicResource Brush.Border.Strong}" />
+        <Setter Property="infra:ThemeProps.ReliefBrush" Value="{StaticResource Sheen.Raised}" />
+    </Style>
+
+    <Style x:Key="Button.Ghost" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Square, icon-only. Used for card actions and the title bar. -->
+    <Style x:Key="Button.Icon" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinHeight" Value="0" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="Button.TitleBar" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+        <Setter Property="Width" Value="40" />
+        <Setter Property="Height" Value="30" />
+    </Style>
+
+    <!-- Close turns red like every other Windows app. -->
+    <Style x:Key="Button.TitleBar.Close" TargetType="Button" BasedOn="{StaticResource Button.TitleBar}">
+        <Setter Property="infra:ThemeProps.HoverBrush" Value="{DynamicResource Brush.Negative}" />
+        <Setter Property="infra:ThemeProps.PressBrush" Value="{DynamicResource Brush.Negative}" />
+    </Style>
+
+    <!-- ==================== Bottom tabs ==================== -->
+    <!--
+        RadioButton rather than ToggleButton: tabs are mutually exclusive, and a
+        RadioButton's IsChecked can be two-way bound without a click wiping the binding.
+    -->
+
+    <Style x:Key="Tab" TargetType="RadioButton">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Text}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.Size.Body}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Grid Background="{DynamicResource Brush.Surface.Transparent}" Height="44">
+                        <Border x:Name="Hover"
+                                Opacity="0"
+                                CornerRadius="{StaticResource Radius.Medium}"
+                                Background="{DynamicResource Brush.Surface.Hover}" />
+                        <Border x:Name="Selected"
+                                Opacity="0"
+                                CornerRadius="{StaticResource Radius.Medium}"
+                                Background="{DynamicResource Brush.Accent.Muted}" />
+
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Grid>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Selected" Property="Opacity" Value="1" />
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                            <Trigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Selected.Out}" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Selected.In}" />
+                            </MultiTrigger.EnterActions>
+                        </MultiTrigger>
+
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Hover" Property="Opacity" Value="1" />
+                            <Trigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.Out}" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.In}" />
+                            </MultiTrigger.EnterActions>
+                        </MultiTrigger>
+
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ==================== Theme swatch ==================== -->
+
+    <Style x:Key="Swatch" TargetType="RadioButton">
+        <Setter Property="Width" Value="44" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Grid Background="{DynamicResource Brush.Surface.Transparent}">
+                        <!--
+                            Ring sits outside the dot so selection reads without resizing it.
+                            Named Mark, like the checkbox's fill: both are "the layer that
+                            says this is chosen", so one pair of storyboards drives both.
+                        -->
+                        <Ellipse x:Name="Mark"
+                                 Opacity="0"
+                                 Stroke="{TemplateBinding Background}"
+                                 StrokeThickness="2"
+                                 Margin="2" />
+                        <Ellipse x:Name="Dot"
+                                 Fill="{TemplateBinding Background}"
+                                 Margin="7" />
+                        <Path x:Name="Tick"
+                              Opacity="0"
+                              Data="{StaticResource Icon.Check}"
+                              Style="{StaticResource IconPath.Small}"
+                              Width="15" Height="15"
+                              Stroke="{DynamicResource Brush.Text.OnAccent}" />
+                    </Grid>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Mark" Property="Opacity" Value="1" />
+                            <Setter TargetName="Tick" Property="Opacity" Value="1" />
+                            <Trigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Mark.Out}" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Mark.In}" />
+                            </MultiTrigger.EnterActions>
+                        </MultiTrigger>
+
+                        <!--
+                            The swell is decoration outright, so both the size and the
+                            fade hang off the mode: in lite mode the dot simply never
+                            grows, and a Setter cannot leave it stranded when the mode
+                            changes under the pointer.
+                        -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Dot" Property="Margin" Value="5.2" />
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Swell.In}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Swell.Out}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ==================== Toggle switch ==================== -->
+
+    <Style x:Key="Toggle.Switch" TargetType="ToggleButton">
+        <Setter Property="Width" Value="40" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Grid Background="{DynamicResource Brush.Surface.Transparent}">
+                        <Border x:Name="Track"
+                                Background="{DynamicResource Brush.Surface.Hover}"
+                                BorderBrush="{DynamicResource Brush.Border.Strong}"
+                                BorderThickness="1"
+                                CornerRadius="11" />
+                        <!-- The lit track is a separate layer so it can fade rather than snap. -->
+                        <Border x:Name="TrackOn"
+                                Opacity="0"
+                                Background="{DynamicResource Brush.Accent}"
+                                BorderBrush="{DynamicResource Brush.Accent}"
+                                BorderThickness="1"
+                                CornerRadius="11" />
+                        <Border x:Name="TrackRelief"
+                                Style="{StaticResource Relief.Inset}"
+                                CornerRadius="11" />
+                        <!--
+                            The thumb travels on its own Margin rather than on a render
+                            transform. A shared storyboard cannot move a transform declared
+                            in a template: WPF decides which of a template's freezables to
+                            leave mutable by reading the template, and a storyboard sitting
+                            in another dictionary is not part of it — so the transform is
+                            frozen, the animation is discarded without complaint, and the
+                            switch never moves. Margin belongs to the element itself, which
+                            is always animatable.
+                        -->
+                        <Ellipse x:Name="Thumb"
+                                 Width="14" Height="14"
+                                 HorizontalAlignment="Left"
+                                 Margin="4,0,0,0"
+                                 Fill="{DynamicResource Brush.Text.Secondary}" />
+                        <Ellipse x:Name="ThumbOn"
+                                 Opacity="0"
+                                 Width="14" Height="14"
+                                 HorizontalAlignment="Left"
+                                 Margin="4,0,0,0"
+                                 Fill="{DynamicResource Brush.Text.OnAccent}" />
+                    </Grid>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="TrackOn" Property="Opacity" Value="1" />
+                            <Setter TargetName="ThumbOn" Property="Opacity" Value="1" />
+                            <Setter TargetName="Thumb" Property="Margin" Value="22,0,0,0" />
+                            <Setter TargetName="ThumbOn" Property="Margin" Value="22,0,0,0" />
+                            <Trigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Switch.Out}" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Switch.In}" />
+                            </MultiTrigger.EnterActions>
+                        </MultiTrigger>
+
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ==================== CheckBox ==================== -->
+
+    <Style x:Key="CheckBox.Default" TargetType="CheckBox">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Text}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.Size.Body}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <StackPanel Orientation="Horizontal" Background="{DynamicResource Brush.Surface.Transparent}">
+                        <Grid Width="18" Height="18" VerticalAlignment="Center">
+                            <Border x:Name="Box"
+                                    Background="{DynamicResource Brush.Surface.Overlay}"
+                                    BorderBrush="{DynamicResource Brush.Border.Strong}"
+                                    BorderThickness="1"
+                                    CornerRadius="{StaticResource Radius.Small}" />
+                            <!-- Named Mark to share the swatch's storyboards; see above. -->
+                            <Border x:Name="Mark"
+                                    Opacity="0"
+                                    Background="{DynamicResource Brush.Accent}"
+                                    BorderBrush="{DynamicResource Brush.Accent}"
+                                    BorderThickness="1"
+                                    CornerRadius="{StaticResource Radius.Small}" />
+                            <Path x:Name="Tick"
+                                  Opacity="0"
+                                  Data="{StaticResource Icon.Check}"
+                                  Style="{StaticResource IconPath.Small}"
+                                  Stroke="{DynamicResource Brush.Text.OnAccent}"
+                                  Width="11" Height="11" />
+                        </Grid>
+                        <ContentPresenter Margin="10,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Mark" Property="Opacity" Value="1" />
+                            <Setter TargetName="Tick" Property="Opacity" Value="1" />
+                            <Trigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Mark.Out}" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Mark.In}" />
+                            </MultiTrigger.EnterActions>
+                        </MultiTrigger>
+
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                        </Trigger>
+
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ==================== TextBox ==================== -->
+
+    <Style x:Key="TextBox.Search" TargetType="TextBox">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Text}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.Size.Body}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="SelectionOpacity" Value="0.35" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Grid>
+                        <Border x:Name="Root"
+                                Background="{DynamicResource Brush.Surface.Raised}"
+                                BorderBrush="{DynamicResource Brush.Border.Default}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{StaticResource Radius.Medium}"
+                                MinHeight="34" />
+                        <Border x:Name="Focused"
+                                Opacity="0"
+                                BorderBrush="{DynamicResource Brush.Accent}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{StaticResource Radius.Medium}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Path Grid.Column="0"
+                                  Data="{StaticResource Icon.Search}"
+                                  Style="{StaticResource IconPath.Small}"
+                                  Stroke="{DynamicResource Brush.Text.Tertiary}"
+                                  Margin="11,0,0,0" />
+                            <Grid Grid.Column="1" Margin="9,0,10,0">
+                                <TextBlock x:Name="Placeholder"
+                                           Text="{TemplateBinding Tag}"
+                                           Foreground="{DynamicResource Brush.Text.Disabled}"
+                                           FontSize="{StaticResource Font.Size.Body}"
+                                           VerticalAlignment="Center"
+                                           IsHitTestVisible="False"
+                                           Visibility="Collapsed" />
+                                <ScrollViewer x:Name="PART_ContentHost"
+                                              VerticalAlignment="Center"
+                                              Focusable="False"
+                                              HorizontalScrollBarVisibility="Hidden"
+                                              VerticalScrollBarVisibility="Hidden" />
+                            </Grid>
+                        </Grid>
+                    </Grid>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Text" Value="">
+                            <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+                        </Trigger>
+
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}" />
+                        </Trigger>
+
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Focused" Property="Opacity" Value="1" />
+                            <Trigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Focus.Out}" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsKeyboardFocused" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Focus.In}" />
+                            </MultiTrigger.EnterActions>
+                        </MultiTrigger>
+
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="TextBox.Default" TargetType="TextBox">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Text}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.Size.Body}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="Padding" Value="10,7" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="Root"
+                            Background="{DynamicResource Brush.Surface.Raised}"
+                            BorderBrush="{DynamicResource Brush.Border.Default}"
+                            BorderThickness="1"
+                            CornerRadius="{StaticResource Radius.Medium}"
+                            MinHeight="34">
+                        <ScrollViewer x:Name="PART_ContentHost"
+                                      Margin="{TemplateBinding Padding}"
+                                      VerticalAlignment="Center"
+                                      Focusable="False"
+                                      HorizontalScrollBarVisibility="Hidden"
+                                      VerticalScrollBarVisibility="Hidden" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ==================== Scrollbars ==================== -->
+
+    <Style x:Key="ScrollBar.Thumb" TargetType="Thumb">
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Grid Background="{DynamicResource Brush.Surface.Transparent}">
+                        <Border Background="{DynamicResource Brush.Border.Strong}" CornerRadius="3" Margin="3,0" />
+                        <Border x:Name="Hover"
+                                Opacity="0"
+                                Background="{DynamicResource Brush.Text.Disabled}"
+                                CornerRadius="3"
+                                Margin="3,0" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Hover" Property="Opacity" Value="1" />
+                            <Trigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.Out}" />
+                            </Trigger.ExitActions>
+                        </Trigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.In}" />
+                            </MultiTrigger.EnterActions>
+                        </MultiTrigger>
+
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="Width" Value="10" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Transparent}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource ScrollBar.Thumb}" />
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False" />
+                            </Track.IncreaseRepeatButton>
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False" />
+                            </Track.DecreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ScrollViewer">
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="PanningMode" Value="VerticalOnly" />
+    </Style>
+
+    <!-- ==================== Tooltip ==================== -->
+
+    <Style TargetType="ToolTip">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Text}" />
+        <Setter Property="FontSize" Value="{StaticResource Font.Size.Caption}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Background="{DynamicResource Brush.Surface.Overlay}"
+                            BorderBrush="{DynamicResource Brush.Border.Strong}"
+                            BorderThickness="1"
+                            CornerRadius="{StaticResource Radius.Small}"
+                            Padding="8,5">
+                        <ContentPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ==================== Cards & chips ==================== -->
+
+    <Style x:Key="Card" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Raised}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Large}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <!-- Barely visible on purpose: enough to separate the card from the page,
+                     not enough to read as a floating panel. -->
+                <DropShadowEffect BlurRadius="14" ShadowDepth="2" Direction="270"
+                                  Opacity="0.17" Color="#000000" RenderingBias="Quality" />
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <!--
+                A drop shadow is a per-pixel blur the composition layer has to redo whenever
+                anything under it moves. The border alone still separates the card from the
+                page, so lite mode keeps the shape and drops the blur.
+            -->
+            <Trigger Property="infra:ThemeProps.Animated" Value="False">
+                <Setter Property="Effect" Value="{x:Null}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!--
+        The tray flyout and the pairing dialog: layered windows that need their own edge,
+        and the same lite-mode escape from a per-pixel blur.
+    -->
+    <Style x:Key="Popover" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Raised}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Large}" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="22" ShadowDepth="4" Direction="270"
+                                  Opacity="0.30" Color="#000000" RenderingBias="Quality" />
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="infra:ThemeProps.Animated" Value="False">
+                <Setter Property="Effect" Value="{x:Null}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ==================== Progress ==================== -->
+    <!--
+        Indeterminate scan line. Scale-based rather than translate-based so it is
+        width-independent: the bar fills left-to-right, fades, repeats.
+    -->
+
+    <Style x:Key="ScanBar" TargetType="ProgressBar">
+        <Setter Property="Height" Value="2" />
+        <Setter Property="IsIndeterminate" Value="True" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Grid ClipToBounds="True">
+                        <Border Background="{DynamicResource Brush.Border.Subtle}" />
+                        <Border x:Name="Sliver"
+                                Background="{TemplateBinding Foreground}"
+                                RenderTransformOrigin="0,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform x:Name="SliverScale" ScaleX="0" />
+                            </Border.RenderTransform>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <!--
+                            The one animation in the app that repeats indefinitely, so it is
+                            also the only one that can hold the render thread awake. Both
+                            variants are capped well under the display's refresh rate: a
+                            two-pixel line crossing a window in a second and a half has
+                            nothing to show at sixty frames that it does not show at thirty.
+                        -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsVisible" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Name="Sweep">
+                                    <Storyboard RepeatBehavior="Forever" Timeline.DesiredFrameRate="30">
+                                        <DoubleAnimation Storyboard.TargetName="SliverScale"
+                                                         Storyboard.TargetProperty="ScaleX"
+                                                         From="0" To="1" Duration="0:0:1.6">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseInOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="Sliver"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         From="1" To="0"
+                                                         BeginTime="0:0:1.6" Duration="0:0:0.5" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <StopStoryboard BeginStoryboardName="Sweep" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsVisible" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Name="SweepLite">
+                                    <Storyboard RepeatBehavior="Forever" Timeline.DesiredFrameRate="10">
+                                        <DoubleAnimation Storyboard.TargetName="SliverScale"
+                                                         Storyboard.TargetProperty="ScaleX"
+                                                         From="0" To="1" Duration="0:0:1.6" />
+                                        <DoubleAnimation Storyboard.TargetName="Sliver"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         From="1" To="0"
+                                                         BeginTime="0:0:1.6" Duration="0:0:0.5" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <StopStoryboard BeginStoryboardName="SweepLite" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

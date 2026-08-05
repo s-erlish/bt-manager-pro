@@ -1,0 +1,1020 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Threading;
+using BluetoothManagerPro.Infrastructure;
+using BluetoothManagerPro.Models;
+using BluetoothManagerPro.Services;
+
+namespace BluetoothManagerPro.ViewModels;
+
+/// <summary>Drives the main window and the tray flyout — they share one list.</summary>
+public sealed class MainViewModel : ObservableObject, IDisposable
+{
+    private static readonly TimeSpan ResortDelay = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>
+    /// Consecutive empty battery sweeps after which the sweep stops being attempted on
+    /// every tick. Most headsets never report a level, and on those machines this poll was
+    /// pure waste.
+    /// </summary>
+    private const int BatteryGiveUpAfter = 3;
+
+    private readonly BluetoothDiscoveryService _discovery;
+    private readonly ClassicBluetoothService _classic;
+    private readonly RadioService _radio;
+    private readonly BatteryService _battery;
+    private readonly AutoStartService _autoStart;
+    private readonly SettingsService _settingsStore;
+    private readonly ThemeService _theme;
+    private readonly AppSettings _settings;
+
+    private readonly Dictionary<string, DeviceViewModel> _byKey = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _endpointToKey = new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly DispatcherTimer _connectionTimer;
+    private readonly DispatcherTimer _batteryTimer;
+    private readonly DispatcherTimer _resortTimer;
+
+    private string _searchText = string.Empty;
+    private string _statusMessage = string.Empty;
+    private bool _isBluetoothOn;
+    private bool _isRadioAvailable;
+    private bool _isScanning;
+    private bool _isSettingsOpen;
+
+    /// <summary>Flyout list, rebuilt only when it would actually look different.</summary>
+    private DeviceViewModel[] _quickAccess = Array.Empty<DeviceViewModel>();
+
+    private int _connectedCount;
+    private bool _isWindowVisible = true;
+
+    /// <summary>Set when a re-sort was skipped because nothing was on screen to sort.</summary>
+    private bool _viewStale;
+
+    private int _emptyBatterySweeps;
+
+    public MainViewModel(
+        BluetoothDiscoveryService discovery,
+        ClassicBluetoothService classic,
+        RadioService radio,
+        BatteryService battery,
+        AutoStartService autoStart,
+        SettingsService settingsStore,
+        ThemeService theme,
+        AppSettings settings,
+        Dispatcher dispatcher)
+    {
+        _discovery = discovery;
+        _classic = classic;
+        _radio = radio;
+        _battery = battery;
+        _autoStart = autoStart;
+        _settingsStore = settingsStore;
+        _theme = theme;
+        _settings = settings;
+
+        Accents = AccentPreset.All.Select(p => new AccentSwatchViewModel(p, ApplyAccent)).ToArray();
+        SyncThemeSelection();
+
+        Devices = new ObservableCollection<DeviceViewModel>();
+        DevicesView = (ListCollectionView)CollectionViewSource.GetDefaultView(Devices);
+        DevicesView.CustomSort = new DeviceComparer();
+        DevicesView.Filter = FilterDevice;
+        DevicesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(DeviceViewModel.GroupName)));
+
+        _discovery.DevicesChanged += OnDevicesChanged;
+        _discovery.DeviceRemoved += OnDeviceRemoved;
+        _discovery.ScanningChanged += on => IsScanning = on;
+        _radio.StateChanged += OnRadioStateChanged;
+
+        ScanCommand = new RelayCommand(StartScan, () => !IsScanning && IsBluetoothOn);
+        ToggleConnectionCommand = new AsyncRelayCommand(ToggleConnectionAsync, CanOperate);
+        UnpairCommand = new AsyncRelayCommand(UnpairAsync, CanOperate);
+        PairCommand = new AsyncRelayCommand(PairAsync, CanOperate);
+        ToggleFavoriteCommand = new RelayCommand(ToggleFavorite, CanOperate);
+        OpenSystemSettingsCommand = new RelayCommand(OpenSystemSettings);
+        ClearSearchCommand = new RelayCommand(() => SearchText = string.Empty);
+
+        // This DispatcherTimer overload starts the timer immediately, so stop each one
+        // until InitializeAsync has had a chance to bring the services up.
+        Pace pace = CurrentPace;
+        _connectionTimer = new DispatcherTimer(pace.Connection, DispatcherPriority.Background,
+            async (_, _) => await RefreshClassicStateAsync(), dispatcher);
+        _connectionTimer.Stop();
+        _batteryTimer = new DispatcherTimer(pace.Battery, DispatcherPriority.Background,
+            async (_, _) => await RefreshBatteryAsync(), dispatcher);
+        _batteryTimer.Stop();
+
+        // Re-sorting on every watcher update makes the list jump under the cursor;
+        // coalesce the churn into one refresh.
+        _resortTimer = new DispatcherTimer(ResortDelay, DispatcherPriority.Background, (_, _) =>
+        {
+            _resortTimer!.Stop();
+            _viewStale = false;
+            DevicesView.Refresh();
+            OnPropertyChanged(nameof(IsListEmpty));
+        }, dispatcher);
+        _resortTimer.Stop();
+    }
+
+    public ObservableCollection<DeviceViewModel> Devices { get; }
+
+    public ListCollectionView DevicesView { get; }
+
+    /// <summary>
+    /// Favourites, connected first — this is what the tray flyout shows.
+    ///
+    /// Held as a field rather than recomputed per read. WPF reads a bound property several
+    /// times per notification, and this used to raise its own change event on every watcher
+    /// update, which drove the tray icon to re-render and re-register with the shell.
+    /// </summary>
+    public IReadOnlyList<DeviceViewModel> QuickAccessDevices => _quickAccess;
+
+    public bool HasQuickAccessDevices => _quickAccess.Length > 0;
+
+    /// <summary>How many devices are connected right now; the tray icon's colour follows it.</summary>
+    public int ConnectedCount
+    {
+        get => _connectedCount;
+        private set => SetProperty(ref _connectedCount, value);
+    }
+
+    /// <summary>
+    /// Whether the main window is on screen. Drives how hard the app works: hidden, it
+    /// slows its polls right down and stops re-sorting a list nobody can see.
+    /// </summary>
+    public bool IsWindowVisible
+    {
+        get => _isWindowVisible;
+        set
+        {
+            if (_isWindowVisible == value)
+            {
+                return;
+            }
+
+            _isWindowVisible = value;
+            ApplyPace();
+
+            if (value)
+            {
+                // Whatever was skipped while hidden is settled before the window paints.
+                FlushDeferredRefresh();
+                _ = RefreshNowAsync();
+            }
+        }
+    }
+
+    public IReadOnlyList<SystemSettingsEntry> SystemSettings => SystemSettingsLauncher.Entries;
+
+    public ICommand ScanCommand { get; }
+
+    public ICommand ToggleConnectionCommand { get; }
+
+    public ICommand UnpairCommand { get; }
+
+    public ICommand PairCommand { get; }
+
+    public ICommand ToggleFavoriteCommand { get; }
+
+    public ICommand OpenSystemSettingsCommand { get; }
+
+    public ICommand ClearSearchCommand { get; }
+
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (SetProperty(ref _searchText, value))
+            {
+                OnPropertyChanged(nameof(HasSearchText));
+                DevicesView.Refresh();
+                OnPropertyChanged(nameof(IsListEmpty));
+            }
+        }
+    }
+
+    public bool HasSearchText => !string.IsNullOrEmpty(SearchText);
+
+    public bool IsListEmpty => DevicesView.IsEmpty;
+
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        private set
+        {
+            if (SetProperty(ref _statusMessage, value))
+            {
+                OnPropertyChanged(nameof(HasStatusMessage));
+            }
+        }
+    }
+
+    public bool HasStatusMessage => !string.IsNullOrEmpty(StatusMessage);
+
+    public bool IsBluetoothOn
+    {
+        get => _isBluetoothOn;
+        private set
+        {
+            if (SetProperty(ref _isBluetoothOn, value))
+            {
+                OnPropertyChanged(nameof(RadioStatusText));
+                OnPropertyChanged(nameof(RadioSwitch));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Two-way face of <see cref="IsBluetoothOn"/> for the switch. A ToggleButton writes
+    /// IsChecked as a local value on click, which would tear down a one-way binding — so
+    /// the write has to be accepted here and reconciled against what the radio actually did.
+    /// </summary>
+    public bool RadioSwitch
+    {
+        get => _isBluetoothOn;
+        set
+        {
+            if (value == _isBluetoothOn)
+            {
+                return;
+            }
+
+            _ = ApplyRadioAsync(value);
+        }
+    }
+
+    public bool IsRadioAvailable
+    {
+        get => _isRadioAvailable;
+        private set => SetProperty(ref _isRadioAvailable, value);
+    }
+
+    public string RadioStatusText => IsBluetoothOn ? "Bluetooth включён" : "Bluetooth выключен";
+
+    public bool IsScanning
+    {
+        get => _isScanning;
+        private set => SetProperty(ref _isScanning, value);
+    }
+
+    // ---- Tabs ---------------------------------------------------------------
+
+    /// <summary>
+    /// The two bottom tabs. Both are two-way bound to their RadioButton, and each keeps
+    /// the other honest so the content switches even when navigated by keyboard.
+    /// </summary>
+    public bool IsDevicesTab
+    {
+        get => !_isSettingsOpen;
+        set
+        {
+            if (value && SetProperty(ref _isSettingsOpen, false))
+            {
+                OnPropertyChanged(nameof(IsSettingsTab));
+            }
+        }
+    }
+
+    public bool IsSettingsTab
+    {
+        get => _isSettingsOpen;
+        set
+        {
+            if (value && SetProperty(ref _isSettingsOpen, true))
+            {
+                OnPropertyChanged(nameof(IsDevicesTab));
+            }
+        }
+    }
+
+    // ---- Theme --------------------------------------------------------------
+
+    /// <summary>The accent picker, ordered as declared.</summary>
+    public IReadOnlyList<AccentSwatchViewModel> Accents { get; }
+
+    /// <summary>
+    /// Light mode is a washed-out tint of the accent rather than white — the point is a
+    /// bright theme that is still calm to look at.
+    /// </summary>
+    public bool IsLightTheme
+    {
+        get => _settings.ThemeMode == ThemeMode.Light;
+        set
+        {
+            ThemeMode mode = value ? ThemeMode.Light : ThemeMode.Dark;
+            if (_settings.ThemeMode == mode)
+            {
+                return;
+            }
+
+            _settings.ThemeMode = mode;
+            _theme.Apply(AccentPreset.Resolve(_settings.AccentId), mode);
+            foreach (AccentSwatchViewModel swatch in Accents)
+            {
+                swatch.Preview(mode);
+            }
+
+            Persist();
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// Strips the app down to the work it cannot avoid: no animations, no shadows, no
+    /// relief, and the background polls stretched out several times over.
+    ///
+    /// The visual half is carried by <see cref="IsAnimated"/>, which every control template
+    /// reads through an inherited attached property, so the switch takes effect on the spot
+    /// rather than at the next launch.
+    /// </summary>
+    public bool LiteMode
+    {
+        get => _settings.LiteMode;
+        set
+        {
+            if (_settings.LiteMode == value)
+            {
+                return;
+            }
+
+            _settings.LiteMode = value;
+            ApplyPace();
+            Persist();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsAnimated));
+        }
+    }
+
+    /// <summary>The inverse of <see cref="LiteMode"/>, in the form the templates want.</summary>
+    public bool IsAnimated => !_settings.LiteMode;
+
+    public string AppFooter => AppInfo.Footer;
+
+    public bool AutoStart
+    {
+        get => _settings.AutoStart;
+        set
+        {
+            if (_settings.AutoStart == value)
+            {
+                return;
+            }
+
+            if (!_autoStart.TrySetEnabled(value))
+            {
+                StatusMessage = "Не удалось изменить автозапуск.";
+                return;
+            }
+
+            _settings.AutoStart = value;
+            Persist();
+            OnPropertyChanged();
+        }
+    }
+
+    public bool CloseToTray
+    {
+        get => _settings.CloseToTray;
+        set
+        {
+            if (_settings.CloseToTray == value)
+            {
+                return;
+            }
+
+            _settings.CloseToTray = value;
+            Persist();
+            OnPropertyChanged();
+        }
+    }
+
+    public bool StartMinimized
+    {
+        get => _settings.StartMinimized;
+        set
+        {
+            if (_settings.StartMinimized == value)
+            {
+                return;
+            }
+
+            _settings.StartMinimized = value;
+            Persist();
+            OnPropertyChanged();
+        }
+    }
+
+    public bool HideUnnamedDevices
+    {
+        get => _settings.HideUnnamedDevices;
+        set
+        {
+            if (_settings.HideUnnamedDevices == value)
+            {
+                return;
+            }
+
+            _settings.HideUnnamedDevices = value;
+            Persist();
+            OnPropertyChanged();
+            DevicesView.Refresh();
+
+            // The flyout applies the same visibility rule, so it has to be resettled too.
+            SyncDerived();
+        }
+    }
+
+    /// <summary>Raised when a pairing ceremony needs the user. The view supplies the dialog.</summary>
+    public Func<PairingPrompt, Task<PairingAnswer>>? PairingPromptHandler { get; set; }
+
+    // ---- Lifetime -----------------------------------------------------------
+
+    public async Task InitializeAsync()
+    {
+        // Reconcile the checkbox with what Windows will actually do at logon.
+        bool registered = _autoStart.IsEnabled;
+        if (registered != _settings.AutoStart)
+        {
+            _settings.AutoStart = registered;
+            OnPropertyChanged(nameof(AutoStart));
+            Persist();
+        }
+
+        await _radio.InitializeAsync();
+        IsRadioAvailable = _radio.IsAvailable;
+        IsBluetoothOn = _radio.IsOn;
+
+        if (!IsRadioAvailable && !_classic.HasRadio())
+        {
+            StatusMessage = "Bluetooth-адаптер не найден.";
+        }
+
+        _discovery.Start();
+        if (_discovery.IsUnavailable)
+        {
+            StatusMessage = "Не удалось получить доступ к Bluetooth. Откройте параметры Windows.";
+        }
+
+        ApplyPace();
+        _connectionTimer.Start();
+        _batteryTimer.Start();
+
+        await RefreshClassicStateAsync();
+        await RefreshBatteryAsync();
+    }
+
+    // ---- Watcher plumbing ---------------------------------------------------
+
+    /// <summary>
+    /// Folds a whole batch of endpoint updates in, then settles the list once. The batch is
+    /// the point: a watcher restart reports every known device at once, and re-sorting per
+    /// device made that quadratic.
+    /// </summary>
+    private void OnDevicesChanged(IReadOnlyList<DeviceSnapshot> batch)
+    {
+        bool ordering = false;
+        bool added = false;
+
+        foreach (DeviceSnapshot snapshot in batch)
+        {
+            string key = DeviceViewModel.KeyFor(snapshot);
+            _endpointToKey[snapshot.Id] = key;
+
+            if (_byKey.TryGetValue(key, out DeviceViewModel? existing))
+            {
+                ordering |= existing.Apply(snapshot);
+                continue;
+            }
+
+            var device = new DeviceViewModel(key, snapshot)
+            {
+                IsFavorite = _settings.Favorites.Contains(key, StringComparer.OrdinalIgnoreCase),
+                Alias = _settings.Aliases.TryGetValue(key, out string? alias) ? alias : null,
+            };
+
+            _byKey[key] = device;
+            Devices.Add(device);
+            added = true;
+        }
+
+        if (ordering || added)
+        {
+            ScheduleResort();
+        }
+    }
+
+    private void OnDeviceRemoved(string endpointId)
+    {
+        if (!_endpointToKey.TryGetValue(endpointId, out string? key) ||
+            !_byKey.TryGetValue(key, out DeviceViewModel? device))
+        {
+            return;
+        }
+
+        _endpointToKey.Remove(endpointId);
+
+        // Keep paired devices on screen even when they stop advertising — that is the
+        // whole point of the list. Only drop endpoints we discovered opportunistically.
+        if (!device.RemoveEndpoint(endpointId) || (!device.IsPaired && !device.IsConnected))
+        {
+            _byKey.Remove(key);
+            Devices.Remove(device);
+            ScheduleResort();
+        }
+    }
+
+    private void OnRadioStateChanged(bool on)
+    {
+        IsBluetoothOn = on;
+
+        // Every watcher dies silently when the radio goes away, so rebuild them.
+        _discovery.Restart();
+        if (!on)
+        {
+            foreach (DeviceViewModel device in Devices)
+            {
+                device.IsConnected = false;
+            }
+        }
+
+        ScheduleResort();
+    }
+
+    /// <summary>
+    /// Settles everything derived from the device list: the flyout's selection, the tray
+    /// icon's count, and — after a short coalescing delay — the sorted view.
+    ///
+    /// The two halves are separate on purpose. The derived state is cheap and is compared
+    /// before anything is announced, so an update that changes nothing visible stays
+    /// silent; the view refresh is expensive and is skipped outright while the window is
+    /// hidden, since re-sorting containers nobody can see is pure cost.
+    /// </summary>
+    private void ScheduleResort()
+    {
+        SyncDerived();
+
+        if (!_isWindowVisible)
+        {
+            _viewStale = true;
+            return;
+        }
+
+        _resortTimer.Stop();
+        _resortTimer.Start();
+    }
+
+    private void SyncDerived()
+    {
+        int connected = 0;
+        foreach (DeviceViewModel device in Devices)
+        {
+            if (device.IsConnected)
+            {
+                connected++;
+            }
+        }
+
+        if (connected != _connectedCount)
+        {
+            // Something plugged in or dropped off: worth asking about batteries again.
+            _emptyBatterySweeps = 0;
+        }
+
+        ConnectedCount = connected;
+
+        DeviceViewModel[] next = Devices
+            .Where(d => (d.IsFavorite || d.IsConnected) && IsWorthShowing(d))
+            .OrderBy(d => d.IsConnected ? 0 : 1)
+            .ThenBy(d => d.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .Take(6)
+            .ToArray();
+
+        if (SameDevices(next, _quickAccess))
+        {
+            return;
+        }
+
+        bool hadAny = _quickAccess.Length > 0;
+        _quickAccess = next;
+        OnPropertyChanged(nameof(QuickAccessDevices));
+
+        if (hadAny != next.Length > 0)
+        {
+            OnPropertyChanged(nameof(HasQuickAccessDevices));
+        }
+    }
+
+    private static bool SameDevices(DeviceViewModel[] left, DeviceViewModel[] right)
+    {
+        if (left.Length != right.Length)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < left.Length; i++)
+        {
+            if (!ReferenceEquals(left[i], right[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>Applies a re-sort that was skipped while the window was away.</summary>
+    private void FlushDeferredRefresh()
+    {
+        if (!_viewStale)
+        {
+            return;
+        }
+
+        _viewStale = false;
+        _resortTimer.Stop();
+        DevicesView.Refresh();
+        OnPropertyChanged(nameof(IsListEmpty));
+    }
+
+    /// <summary>Retunes both polls to the current window state and mode.</summary>
+    private void ApplyPace()
+    {
+        Pace pace = CurrentPace;
+        _connectionTimer.Interval = pace.Connection;
+        _batteryTimer.Interval = pace.Battery;
+    }
+
+    private Pace CurrentPace => Pace.For(_isWindowVisible, _settings.LiteMode);
+
+    /// <summary>Brings the connection state up to date at once, ignoring the poll schedule.</summary>
+    public async Task RefreshNowAsync()
+    {
+        await RefreshClassicStateAsync();
+        FlushDeferredRefresh();
+    }
+
+    private bool FilterDevice(object item)
+        => item is DeviceViewModel device && IsWorthShowing(device) && MatchesSearch(device);
+
+    /// <summary>
+    /// Whether the row represents something the user would recognise. Kept separate from
+    /// the search text so the tray flyout can apply it too — the flyout must not inherit
+    /// whatever is typed in the main window's search box.
+    /// </summary>
+    private bool IsWorthShowing(DeviceViewModel device)
+        => device.IsPaired || (device.IsPresent && (!HideUnnamedDevices || device.HasName));
+
+    private bool MatchesSearch(DeviceViewModel device)
+        => string.IsNullOrWhiteSpace(SearchText)
+           || device.DisplayName.Contains(SearchText, StringComparison.CurrentCultureIgnoreCase);
+
+    // ---- Polling ------------------------------------------------------------
+
+    /// <summary>
+    /// The AEP IsConnected flag lags for BR/EDR devices, so the authoritative state comes
+    /// from the classic stack. This also fills in connection state when no LE endpoint exists.
+    /// </summary>
+    private async Task RefreshClassicStateAsync()
+    {
+        // A radio that is off has nothing to report, and every device was already flipped
+        // to disconnected when it went off. Sweeping anyway just wakes the stack up.
+        if (IsRadioAvailable && !IsBluetoothOn)
+        {
+            return;
+        }
+
+        Dictionary<ulong, ClassicDeviceState> states;
+        try
+        {
+            states = await _classic.GetKnownDevicesAsync();
+        }
+        catch (Exception)
+        {
+            return;
+        }
+
+        // An empty sweep cannot be told apart from a radio that was momentarily busy, and
+        // acting on it would flicker every device to disconnected.
+        if (states.Count == 0)
+        {
+            return;
+        }
+
+        bool ordering = false;
+        foreach (DeviceViewModel device in Devices)
+        {
+            bool connected;
+            if (states.TryGetValue(device.Address, out ClassicDeviceState state))
+            {
+                connected = state.IsConnected;
+            }
+            else if (device.Address != 0 && device.HasClassicEndpoint)
+            {
+                // The sweep reports every remembered BR/EDR device, so one that is missing
+                // from it is not connected. Without this a device that drops off the
+                // classic stack keeps whatever flag it had and stays stuck on "Подключено".
+                connected = false;
+            }
+            else
+            {
+                // LE-only endpoints never appear in the classic sweep; leave them alone.
+                continue;
+            }
+
+            if (device.IsConnected != connected)
+            {
+                device.IsConnected = connected;
+                ordering = true;
+            }
+        }
+
+        if (ordering)
+        {
+            ScheduleResort();
+        }
+    }
+
+    /// <summary>
+    /// Reads battery levels, but only when there is any point.
+    ///
+    /// Nothing here can report a level for a device that is not connected, and roughly half
+    /// of all headsets never report one at all — on those machines this was a device-tree
+    /// sweep and a round of GATT connections every minute, for ever, that could not
+    /// possibly return anything. So the sweep is skipped while nothing is connected, and
+    /// after <see cref="BatteryGiveUpAfter"/> empty results in a row it drops to one
+    /// attempt in four until a device connects or disconnects.
+    /// </summary>
+    private async Task RefreshBatteryAsync()
+    {
+        if (ConnectedCount == 0)
+        {
+            return;
+        }
+
+        if (_emptyBatterySweeps >= BatteryGiveUpAfter && _emptyBatterySweeps % 4 != 0)
+        {
+            _emptyBatterySweeps++;
+            return;
+        }
+
+        bool found = false;
+        try
+        {
+            Dictionary<Guid, int> byContainer = await _battery.ReadClassicByContainerAsync();
+            foreach (DeviceViewModel device in Devices)
+            {
+                if (Guid.TryParseExact(device.Key, "N", out Guid container) &&
+                    byContainer.TryGetValue(container, out int percent))
+                {
+                    device.BatteryPercent = percent;
+                    found = true;
+                }
+            }
+
+            // GATT reads open a connection, so only ask devices that are already connected.
+            foreach (DeviceViewModel device in Devices.Where(d => d.IsConnected && d.BatteryPercent is null).ToArray())
+            {
+                int? level = await _battery.ReadLowEnergyAsync(device.PrimaryEndpointId);
+                if (level is not null)
+                {
+                    device.BatteryPercent = level;
+                    found = true;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Battery is best effort by definition; never surface a failure here.
+        }
+
+        _emptyBatterySweeps = found ? 0 : _emptyBatterySweeps + 1;
+    }
+
+    // ---- Commands -----------------------------------------------------------
+
+    private static bool CanOperate(object? parameter) => parameter is DeviceViewModel;
+
+    private void StartScan()
+    {
+        StatusMessage = string.Empty;
+        _discovery.StartInquiry();
+    }
+
+    private async Task ApplyRadioAsync(bool on)
+    {
+        OperationResult result = await _radio.SetStateAsync(on);
+        if (result.Success)
+        {
+            StatusMessage = string.Empty;
+            return;
+        }
+
+        StatusMessage = result.Message;
+
+        // Snap the switch back to the radio's real state.
+        OnPropertyChanged(nameof(RadioSwitch));
+    }
+
+    private async Task ToggleConnectionAsync(object? parameter)
+    {
+        if (parameter is not DeviceViewModel device)
+        {
+            return;
+        }
+
+        if (!device.IsPaired)
+        {
+            await PairAsync(device);
+            return;
+        }
+
+        if (device.Address == 0 || !device.HasClassicEndpoint)
+        {
+            // LE-only peripherals have no service state to flip: Windows connects them
+            // on demand when an app opens a GATT session.
+            StatusMessage = "Устройство Bluetooth LE подключается автоматически при обращении к нему.";
+            return;
+        }
+
+        bool connect = !device.IsConnected;
+        device.IsBusy = true;
+        try
+        {
+            OperationResult result = await _classic.SetConnectedAsync(device.Address, device.Category, connect);
+            StatusMessage = result.Success ? string.Empty : result.Message;
+
+            if (result.Success)
+            {
+                device.IsConnected = connect;
+                ScheduleResort();
+            }
+        }
+        finally
+        {
+            device.IsBusy = false;
+        }
+
+        await RefreshClassicStateAsync();
+    }
+
+    private async Task PairAsync(object? parameter)
+    {
+        if (parameter is not DeviceViewModel device)
+        {
+            return;
+        }
+
+        device.IsBusy = true;
+        try
+        {
+            Func<PairingPrompt, Task<PairingAnswer>> prompt =
+                PairingPromptHandler ?? (_ => Task.FromResult(PairingAnswer.Yes()));
+
+            OperationResult result = await _discovery.PairAsync(device.PrimaryEndpointId, prompt);
+            StatusMessage = result.Success ? $"«{device.DisplayName}» сопряжено." : result.Message;
+        }
+        finally
+        {
+            device.IsBusy = false;
+        }
+    }
+
+    private async Task UnpairAsync(object? parameter)
+    {
+        if (parameter is not DeviceViewModel device)
+        {
+            return;
+        }
+
+        device.IsBusy = true;
+        try
+        {
+            // Remove every endpoint: leaving the LE half paired makes the device reappear.
+            var failures = new List<string>();
+            foreach (string endpointId in device.EndpointIds.ToArray())
+            {
+                OperationResult result = await _discovery.UnpairAsync(endpointId);
+                if (!result.Success)
+                {
+                    failures.Add(result.Message);
+                }
+            }
+
+            if (failures.Count > 0 && device.Address != 0)
+            {
+                // Last resort for endpoints WinRT will not let go of.
+                OperationResult fallback = await _classic.RemoveAsync(device.Address);
+                if (fallback.Success)
+                {
+                    failures.Clear();
+                }
+            }
+
+            StatusMessage = failures.Count == 0
+                ? $"«{device.DisplayName}» удалено."
+                : failures[0];
+
+            if (failures.Count == 0)
+            {
+                _byKey.Remove(device.Key);
+                Devices.Remove(device);
+                _settings.Favorites.RemoveAll(f => string.Equals(f, device.Key, StringComparison.OrdinalIgnoreCase));
+                Persist();
+                ScheduleResort();
+            }
+        }
+        finally
+        {
+            device.IsBusy = false;
+        }
+    }
+
+    private void ToggleFavorite(object? parameter)
+    {
+        if (parameter is not DeviceViewModel device)
+        {
+            return;
+        }
+
+        device.IsFavorite = !device.IsFavorite;
+        _settings.Favorites.RemoveAll(f => string.Equals(f, device.Key, StringComparison.OrdinalIgnoreCase));
+        if (device.IsFavorite)
+        {
+            _settings.Favorites.Add(device.Key);
+        }
+
+        Persist();
+        ScheduleResort();
+    }
+
+    private void ApplyAccent(AccentPreset preset)
+    {
+        if (string.Equals(_settings.AccentId, preset.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _settings.AccentId = preset.Id;
+        _theme.Apply(preset, _settings.ThemeMode);
+        Persist();
+    }
+
+    /// <summary>Points the picker at whatever is stored, without re-applying the theme.</summary>
+    private void SyncThemeSelection()
+    {
+        AccentPreset current = AccentPreset.Resolve(_settings.AccentId);
+        foreach (AccentSwatchViewModel swatch in Accents)
+        {
+            swatch.SetSelectedQuietly(swatch.Preset.Id == current.Id);
+            swatch.Preview(_settings.ThemeMode);
+        }
+    }
+
+    private void OpenSystemSettings(object? parameter)
+    {
+        string target = parameter as string ?? "ms-settings:bluetooth";
+        if (!SystemSettingsLauncher.Launch(target))
+        {
+            StatusMessage = "Не удалось открыть параметры Windows.";
+        }
+    }
+
+    private void Persist() => _settingsStore.Save(_settings);
+
+    public void Dispose()
+    {
+        _connectionTimer.Stop();
+        _batteryTimer.Stop();
+        _resortTimer.Stop();
+
+        _discovery.DevicesChanged -= OnDevicesChanged;
+        _discovery.DeviceRemoved -= OnDeviceRemoved;
+        _radio.StateChanged -= OnRadioStateChanged;
+    }
+
+    /// <summary>Connected, then favourites, then paired, then the rest; alphabetical within a rank.</summary>
+    private sealed class DeviceComparer : IComparer
+    {
+        public int Compare(object? x, object? y)
+        {
+            if (x is not DeviceViewModel left || y is not DeviceViewModel right)
+            {
+                return 0;
+            }
+
+            int rank = left.SortRank.CompareTo(right.SortRank);
+            return rank != 0
+                ? rank
+                : string.Compare(left.DisplayName, right.DisplayName, StringComparison.CurrentCultureIgnoreCase);
+        }
+    }
+}

@@ -1,0 +1,101 @@
+name: build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Windows is the only place the result can actually be validated end to end,
+    # even though the project compiles cross-platform.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build
+        run: dotnet build src/BluetoothManagerPro/BluetoothManagerPro.csproj -c Release
+
+      - name: Check XAML resource keys
+        shell: pwsh
+        run: python tools/check_xaml_resources.py
+
+      # Storyboard.TargetName is resolved when an animation begins, so a template part
+      # renamed out from under a shared storyboard builds clean and throws on first hover.
+      - name: Check storyboard targets
+        shell: pwsh
+        run: python tools/check_xaml_storyboards.py
+
+      - name: Verify icons are reproducible
+        shell: pwsh
+        run: |
+          python tools/make_icons.py
+          git diff --exit-code -- src/BluetoothManagerPro/Assets
+
+      # Framework-dependent is built as a check that the configuration still works;
+      # only the self-contained build is shipped, because it needs nothing installed.
+      - name: Verify framework-dependent publish
+        run: >
+          dotnet publish src/BluetoothManagerPro/BluetoothManagerPro.csproj
+          -c Release -r win-x64 --self-contained false
+          -o publish/framework-dependent
+
+      - name: Publish
+        run: >
+          dotnet publish src/BluetoothManagerPro/BluetoothManagerPro.csproj
+          -c Release -r win-x64 --self-contained true
+          -o publish/self-contained
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package, dist | Out-Null
+          Copy-Item publish/self-contained/BluetoothManagerPro.exe package/
+          Copy-Item README.md, LICENSE package/
+          Compress-Archive -Path package/* -DestinationPath dist/BluetoothManagerPro-win-x64.zip -Force
+          $zip = Get-Item dist/BluetoothManagerPro-win-x64.zip
+          "Готов $($zip.Name): $([math]::Round($zip.Length / 1MB, 1)) MB"
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: BluetoothManagerPro-win-x64
+          path: dist/BluetoothManagerPro-win-x64.zip
+          retention-days: 90
+          if-no-files-found: error
+
+  release:
+    # Artifacts expire and need a GitHub login to download. Tagging v1.2.3 attaches the
+    # same archive to a Release, which gives it a permanent public link.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download archive
+        uses: actions/download-artifact@v4
+        with:
+          name: BluetoothManagerPro-win-x64
+          path: dist
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/BluetoothManagerPro-win-x64.zip \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "Bluetooth Manager Pro ${GITHUB_REF_NAME}" \
+            --generate-notes

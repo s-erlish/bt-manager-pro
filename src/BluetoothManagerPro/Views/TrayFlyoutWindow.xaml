@@ -1,0 +1,152 @@
+<Window x:Class="BluetoothManagerPro.Views.TrayFlyoutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:BluetoothManagerPro.ViewModels"
+        Title="Bluetooth Manager"
+        Width="330"
+        SizeToContent="Height"
+        MaxHeight="560"
+        ShowInTaskbar="False"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ResizeMode="NoResize"
+        FontFamily="{StaticResource Font.Text}"
+        FontSize="{StaticResource Font.Size.Body}"
+        UseLayoutRounding="True">
+
+    <Window.Resources>
+        <!-- Compact row: the whole thing is one button that toggles the connection. -->
+        <DataTemplate x:Key="QuickRowTemplate" DataType="{x:Type vm:DeviceViewModel}">
+            <Button Style="{StaticResource Button.Ghost}"
+                    HorizontalContentAlignment="Stretch"
+                    Padding="8"
+                    Margin="0,1"
+                    Command="{Binding DataContext.ToggleConnectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding}"
+                    ToolTip="{Binding ConnectionActionText}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border x:Name="Badge" Grid.Column="0"
+                            Width="30" Height="30"
+                            CornerRadius="{StaticResource Radius.Small}"
+                            Background="{DynamicResource Brush.Surface.Overlay}"
+                            TextElement.Foreground="{DynamicResource Brush.Text.Secondary}">
+                        <Grid>
+                            <Border Style="{StaticResource Relief.Raised}"
+                                    CornerRadius="{StaticResource Radius.Small}" />
+                            <Path Data="{Binding Category, Converter={StaticResource CategoryToIcon}}"
+                                  Style="{StaticResource IconPath.Small}" />
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding DisplayName}"
+                                   Style="{StaticResource Text.Body}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="Status"
+                                   Text="{Binding StatusText}"
+                                   Style="{StaticResource Text.Caption}"
+                                   Margin="0,1,0,0" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding BatteryText}"
+                               Style="{StaticResource Text.Caption}"
+                               VerticalAlignment="Center"
+                               Foreground="{Binding BatteryPercent, Converter={StaticResource BatteryToBrush}}"
+                               Visibility="{Binding HasBattery, Converter={StaticResource BoolToVisibility}}" />
+                </Grid>
+            </Button>
+
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                    <Setter TargetName="Badge" Property="Background" Value="{DynamicResource Brush.Accent.Muted}" />
+                    <Setter TargetName="Badge" Property="TextElement.Foreground" Value="{DynamicResource Brush.Accent}" />
+                    <Setter TargetName="Status" Property="Foreground" Value="{DynamicResource Brush.Positive}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Border Style="{StaticResource Popover}" Margin="10">
+        <StackPanel Margin="6">
+
+            <!-- Radio row -->
+            <Grid Margin="8,8,8,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Path Grid.Column="0"
+                      Data="{StaticResource Icon.Bluetooth}"
+                      Style="{StaticResource IconPath.Small}"
+                      Stroke="{DynamicResource Brush.Accent}" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding RadioStatusText}"
+                           Style="{StaticResource Text.Body}"
+                           FontWeight="SemiBold"
+                           Margin="10,0,0,0"
+                           VerticalAlignment="Center" />
+                <ToggleButton Grid.Column="2"
+                              Style="{StaticResource Toggle.Switch}"
+                              IsChecked="{Binding RadioSwitch, Mode=TwoWay}"
+                              IsEnabled="{Binding IsRadioAvailable}" />
+            </Grid>
+
+            <Border Height="1" Background="{DynamicResource Brush.Border.Subtle}" Margin="4,6" />
+
+            <!-- Favourites and anything currently connected -->
+            <ItemsControl ItemsSource="{Binding QuickAccessDevices}"
+                          ItemTemplate="{StaticResource QuickRowTemplate}" />
+
+            <TextBlock Style="{StaticResource Text.Caption}"
+                       Margin="10,8"
+                       TextWrapping="Wrap"
+                       Visibility="{Binding HasQuickAccessDevices, Converter={StaticResource BoolToVisibility}, ConverterParameter=invert}"
+                       Text="Отметьте устройства звёздочкой в главном окне, чтобы они появились здесь." />
+
+            <Border Height="1" Background="{DynamicResource Brush.Border.Subtle}" Margin="4,6" />
+
+            <Button Style="{StaticResource Button.Ghost}"
+                    HorizontalContentAlignment="Stretch"
+                    Padding="10,9"
+                    Click="OnOpenWindowClick">
+                <Grid>
+                    <TextBlock Text="Открыть Bluetooth Manager" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                    <Path Data="{StaticResource Icon.ChevronRight}"
+                          Style="{StaticResource IconPath.Small}"
+                          HorizontalAlignment="Right" />
+                </Grid>
+            </Button>
+
+            <Button Style="{StaticResource Button.Ghost}"
+                    HorizontalContentAlignment="Stretch"
+                    Padding="10,9"
+                    Command="{Binding OpenSystemSettingsCommand}"
+                    CommandParameter="ms-settings:bluetooth">
+                <Grid>
+                    <TextBlock Text="Параметры Bluetooth Windows" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                    <Path Data="{StaticResource Icon.External}"
+                          Style="{StaticResource IconPath.Small}"
+                          HorizontalAlignment="Right" />
+                </Grid>
+            </Button>
+
+            <Button Style="{StaticResource Button.Ghost}"
+                    HorizontalContentAlignment="Stretch"
+                    Padding="10,9"
+                    Click="OnExitClick">
+                <TextBlock Text="Выход" HorizontalAlignment="Left" VerticalAlignment="Center" />
+            </Button>
+        </StackPanel>
+    </Border>
+</Window>

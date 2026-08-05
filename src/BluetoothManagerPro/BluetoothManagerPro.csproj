@@ -1,0 +1,101 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <!-- Minimum supported OS: Windows 10 1809. Newer APIs are probed at runtime. -->
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <!--
+        Must match the OS bitness: Radio.GetRadiosAsync() returns an EMPTY list to a
+        32-bit process on 64-bit Windows, which silently breaks the radio toggle.
+    -->
+    <Platforms>x64;ARM64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+
+    <UseWPF>true</UseWPF>
+    <!-- WinForms is used only for the tray icon (System.Windows.Forms.NotifyIcon);
+         the tray menu itself is a custom WPF window so it can follow the dark theme. -->
+    <UseWindowsForms>true</UseWindowsForms>
+
+    <RootNamespace>BluetoothManagerPro</RootNamespace>
+    <AssemblyName>BluetoothManagerPro</AssemblyName>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+
+    <Product>Bluetooth Manager Pro</Product>
+    <AssemblyTitle>Bluetooth Manager Pro</AssemblyTitle>
+    <Company>Bluetooth Manager Pro</Company>
+    <Version>1.1.3</Version>
+    <FileVersion>1.1.3.0</FileVersion>
+    <AssemblyVersion>1.1.3.0</AssemblyVersion>
+    <Copyright>MIT License</Copyright>
+
+    <!-- Lets the project be restored/compiled from Linux or macOS CI agents. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <DebugType>embedded</DebugType>
+
+    <!--
+        Runtime knobs for a process that spends its life idle in the tray.
+
+        Background GC buys shorter pauses by keeping a dedicated thread and a larger
+        retained heap — a good trade for a server, a poor one here, where the app allocates
+        almost nothing between user actions and a pause nobody is present for costs nothing.
+        Turning it off removes the thread and lets the heap shrink to what is live.
+
+        Quick JIT for loops keeps startup code out of the optimising compiler; nothing in
+        this app runs a loop hot enough to want tier 1 up front. EventSource and the
+        metadata updater are diagnostics infrastructure this app never uses.
+    -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <RetainVMGarbageCollection>false</RetainVMGarbageCollection>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+    <EventSourceSupport>false</EventSourceSupport>
+    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+
+    <!--
+        WFAC010 tells WinForms apps to move DPI settings out of the manifest. This is a
+        WPF app that only borrows NotifyIcon, and WPF reads DPI awareness from the
+        manifest, so the manifest is the correct place for it here.
+    -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+
+  <!--
+      Single-file publishing knobs, applied only when a RID is selected. SelfContained is
+      deliberately left unset so `dotnet publish` decides: framework-dependent by default
+      in .NET 8, self-contained when the caller asks for it on the command line.
+
+      Trimming and ReadyToRun stay off — neither is supported for WPF.
+  -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <!-- Bundle compression requires a self-contained bundle. -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true' AND '$(SelfContained)' == 'true'">
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+        Enabling WinForms adds System.Windows.Forms and System.Drawing to the implicit
+        usings, which then collide with System.Windows / System.Windows.Media on
+        Application, KeyEventArgs, Point, Brush and more in every WPF file. Only the tray
+        host needs those namespaces, and it imports them explicitly.
+    -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+</Project>

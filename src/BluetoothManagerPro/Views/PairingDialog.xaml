@@ -1,0 +1,82 @@
+<Window x:Class="BluetoothManagerPro.Views.PairingDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Сопряжение"
+        Width="360"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStartupLocation="CenterOwner"
+        FontFamily="{StaticResource Font.Text}"
+        FontSize="{StaticResource Font.Size.Body}"
+        UseLayoutRounding="True">
+
+    <Border Style="{StaticResource Popover}" Padding="20" Margin="12">
+        <StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Border Width="38" Height="38"
+                        CornerRadius="{StaticResource Radius.Medium}"
+                        Background="{DynamicResource Brush.Accent.Muted}"
+                        TextElement.Foreground="{DynamicResource Brush.Accent}">
+                    <Grid>
+                        <Border Style="{StaticResource Relief.Raised}"
+                                CornerRadius="{StaticResource Radius.Medium}" />
+                        <Path Data="{StaticResource Icon.Bluetooth}" Style="{StaticResource IconPath}" />
+                    </Grid>
+                </Border>
+                <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="Сопряжение устройства" Style="{StaticResource Text.Subtitle}" />
+                    <TextBlock x:Name="DeviceNameText"
+                               Style="{StaticResource Text.Caption}"
+                               Margin="0,2,0,0"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </StackPanel>
+
+            <TextBlock x:Name="MessageText"
+                       Style="{StaticResource Text.Secondary}"
+                       TextWrapping="Wrap"
+                       Margin="0,18,0,0" />
+
+            <!-- Shown for DisplayPin / ConfirmPinMatch -->
+            <Border x:Name="PinDisplay"
+                    Style="{StaticResource Card}"
+                    Background="{DynamicResource Brush.Surface.Overlay}"
+                    Padding="16,12"
+                    Margin="0,14,0,0"
+                    Visibility="Collapsed">
+                <TextBlock x:Name="PinText"
+                           HorizontalAlignment="Center"
+                           FontSize="26"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource Brush.Accent}" />
+            </Border>
+
+            <!-- Shown for ProvidePin -->
+            <TextBox x:Name="PinInput"
+                     Style="{StaticResource TextBox.Default}"
+                     Margin="0,14,0,0"
+                     MaxLength="16"
+                     Visibility="Collapsed"
+                     KeyDown="OnPinKeyDown" />
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+                <Button x:Name="CancelButton"
+                        Style="{StaticResource Button.Secondary}"
+                        Content="Отмена"
+                        MinWidth="96"
+                        Click="OnCancelClick" />
+                <Button x:Name="AcceptButton"
+                        Style="{StaticResource Button.Primary}"
+                        Content="Подтвердить"
+                        MinWidth="120"
+                        Margin="8,0,0,0"
+                        IsDefault="True"
+                        Click="OnAcceptClick" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

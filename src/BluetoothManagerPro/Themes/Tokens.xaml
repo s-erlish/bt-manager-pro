@@ -1,0 +1,84 @@
+<!--
+    Non-colour design tokens: geometry, typography and timing.
+
+    Colours deliberately live in code, not here. Every palette is derived from one accent
+    seed by Services/ThemeService, which pushes text and accent tokens until they clear
+    WCAG AA against the surface they are drawn on — so a new theme cannot ship an
+    unreadable combination. XAML reaches those brushes through DynamicResource, and the
+    service animates the brush objects in place so a theme change cross-fades.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- ==================== Geometry ==================== -->
+    <!-- 4px spacing grid; radii stay small so the UI reads as precise, not bubbly. -->
+
+    <CornerRadius x:Key="Radius.Small">4</CornerRadius>
+    <CornerRadius x:Key="Radius.Medium">6</CornerRadius>
+    <CornerRadius x:Key="Radius.Large">10</CornerRadius>
+
+    <sys:Double x:Key="Size.Icon.Small">14</sys:Double>
+    <sys:Double x:Key="Size.Icon.Medium">18</sys:Double>
+    <sys:Double x:Key="Size.Icon.Large">22</sys:Double>
+
+    <!-- ==================== Typography ==================== -->
+    <!-- Segoe UI Variable on Windows 11, graceful fallback to Segoe UI on Windows 10. -->
+
+    <FontFamily x:Key="Font.Display">Segoe UI Variable Display, Segoe UI Semibold, Segoe UI</FontFamily>
+    <FontFamily x:Key="Font.Text">Segoe UI Variable Text, Segoe UI</FontFamily>
+
+    <sys:Double x:Key="Font.Size.Caption">11</sys:Double>
+    <sys:Double x:Key="Font.Size.Body">13</sys:Double>
+    <sys:Double x:Key="Font.Size.Subtitle">15</sys:Double>
+    <sys:Double x:Key="Font.Size.Title">20</sys:Double>
+
+    <!-- ==================== Relief ==================== -->
+    <!--
+        A whisper of depth, not a bevel: a light edge along the top and a darker one along
+        the bottom, both well below the threshold of being noticed on their own.
+
+        Defined in alpha over whatever is underneath rather than in palette colours, so one
+        pair of gradients works for every theme and for both light and dark without being
+        recomputed — and so the same relief applies to the tray flyout and the pairing
+        dialog, which sit on their own surfaces.
+    -->
+
+    <LinearGradientBrush x:Key="Sheen.Raised" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#10FFFFFF" Offset="0" />
+        <GradientStop Color="#03FFFFFF" Offset="0.45" />
+        <GradientStop Color="#00FFFFFF" Offset="0.6" />
+        <GradientStop Color="#0C000000" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Inverted: reads as pressed into the surface. Used for the switch track. -->
+    <LinearGradientBrush x:Key="Sheen.Inset" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#16000000" Offset="0" />
+        <GradientStop Color="#00000000" Offset="0.55" />
+        <GradientStop Color="#0BFFFFFF" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- ==================== Motion ==================== -->
+    <!--
+        Unhurried and always eased out, so movement decelerates into place rather than
+        stopping dead. Hover and press fade an overlay in and out instead of swapping a
+        brush, which is what makes them read as soft rather than as a flicker.
+    -->
+
+    <Duration x:Key="Motion.Fast">0:0:0.20</Duration>
+    <Duration x:Key="Motion.Normal">0:0:0.34</Duration>
+    <Duration x:Key="Motion.Slow">0:0:0.52</Duration>
+
+    <!--
+        Lite mode needs no duration of its own. States are carried by Setters, so taking the
+        animation away leaves the state arriving instantly rather than leaving it behind.
+    -->
+
+    <!--
+        The scan bar's frame rate is written into its own style rather than kept here:
+        Timeline.DesiredFrameRate is a nullable int, and whether a resource lookup satisfies
+        one is a detail of the property system this app should not be betting on. A literal
+        goes through the XAML type converter at build time, which cannot fail at runtime.
+    -->
+
+</ResourceDictionary>
