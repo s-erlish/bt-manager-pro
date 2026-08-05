@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Two things about the state storyboards that only ever fail once the app is running.
+"""Four rules about the state storyboards, each of which only ever fails once the app runs.
+
+The XAML compiler checks none of them, and WPF reports none of them: every one of these
+mistakes builds cleanly and then quietly does nothing, or does the wrong thing, on a user's
+machine. Three shipped defects came from these four rules before they were written down.
 
 **Target names.** Interaction states are animated by storyboards held as shared resources:
 one "fade the layer named Hover" storyboard serves every control template that has a layer
@@ -17,19 +21,21 @@ frozen, the animation is dropped without a word, and the control simply never mo
 is what stopped every toggle switch from throwing. Shared storyboards must therefore target
 properties of the elements themselves (Opacity, Margin), never a named transform.
 
-**Mode-conditioned exits.** Lite mode is a condition on the triggers that enter a state, so
-each state has an "and animated" branch and an "and lite" one. A trigger fires its
-ExitActions whenever its condition set stops matching and cannot tell why — so putting the
-mode in a branch that also *leaves* a state meant that turning lite mode off read as every
-checkbox, switch and swatch being deselected at once, and the fade-out undid the branch
-that had just lit them. Leaving a state has to be driven by the state alone.
+**Animations must not hold values.** The states themselves are Setters; the storyboards
+only walk a property to the value the Setter already gives it. That works because every
+state storyboard ends with FillBehavior="Stop" and hands the property back when it
+finishes. Let one hold its end value instead and it outranks the Setter, and the interface
+starts depending on the animation having run — which is how switching lite mode off blanked
+every checkbox and how both tabs ended up lit at once.
 
-Stopping a storyboard on exit is fine and is not flagged: the scan bar's repeating sweep
-genuinely should stop when the mode changes, so the other one can take over.
+**Mode-conditioned exits.** A trigger fires its ExitActions whenever its condition set stops
+matching and cannot tell why, so a trigger that is conditioned on lite mode runs them when
+the *mode* changes. That is only safe if the same trigger also carries the Setters for the
+state, so the value it is walking towards is one it owns; otherwise it undoes a state some
+other trigger is asserting.
 
 Usage:  python3 tools/check_xaml_storyboards.py [src_dir]
-Exit code is 1 if anything is unresolved or a mode-conditioned trigger begins a storyboard
-on its way out.
+Exit code is 1 if any of the four rules is broken.
 """
 
 from __future__ import annotations
@@ -83,8 +89,36 @@ def collect_shared(tree: ET.ElementTree) -> dict[str, set[str]]:
     return shared
 
 
+def check_fill_behaviour(tree: ET.ElementTree, path: str) -> list[str]:
+    """Every animation in a shared state storyboard must give the property back when done."""
+    problems: list[str] = []
+
+    for node in tree.iter():
+        key = node.get(f"{X}Key")
+        if local(node.tag) != "Storyboard" or not key:
+            continue
+
+        for animation in node:
+            if not local(animation.tag).endswith("Animation"):
+                continue
+
+            if animation.get("FillBehavior") != "Stop":
+                problems.append(
+                    f"{path}: '{key}' animates {animation.get('Storyboard.TargetName')}."
+                    f"{animation.get('Storyboard.TargetProperty')} without FillBehavior=\"Stop\" — "
+                    f"it would hold its end value and outrank the Setter that carries the state")
+
+    return problems
+
+
 def check_mode_exits(tree: ET.ElementTree, path: str) -> list[str]:
-    """Reports every mode-conditioned trigger that begins a storyboard on the way out."""
+    """
+    Reports mode-conditioned triggers that animate on the way out without owning the state.
+
+    Such a trigger runs its ExitActions when the *mode* changes, not only when the state
+    ends. That is fine when the trigger also holds the Setters for that state — it is then
+    walking towards a value it is itself removing — and wrong otherwise.
+    """
     problems: list[str] = []
 
     for trigger in tree.iter():
@@ -95,15 +129,18 @@ def check_mode_exits(tree: ET.ElementTree, path: str) -> list[str]:
         if MODE_PROPERTY not in [c.get("Property") for c in conditions]:
             continue
 
+        owns_state = any(local(child.tag) == "Setter" for child in trigger)
+
         for section in trigger:
-            if local(section.tag) != "MultiTrigger.ExitActions":
+            if local(section.tag) != "MultiTrigger.ExitActions" or owns_state:
                 continue
 
             if any(local(action.tag) == "BeginStoryboard" for action in section):
                 states = [c.get("Property") for c in conditions if c.get("Property") != MODE_PROPERTY]
                 problems.append(
                     f"{path}: trigger on {', '.join(states) or '(mode only)'} begins a storyboard "
-                    f"when its conditions stop matching — a mode change would run it and undo the state")
+                    f"when its conditions stop matching, but carries no Setter of its own — "
+                    f"a mode change would run it and undo a state it does not own")
 
     return problems
 
@@ -111,7 +148,7 @@ def check_mode_exits(tree: ET.ElementTree, path: str) -> list[str]:
 def check_file(path: str, shared: dict[str, set[str]]) -> list[str]:
     """Reports every BeginStoryboard whose targets the enclosing template lacks."""
     tree = ET.parse(path)
-    problems: list[str] = check_mode_exits(tree, path)
+    problems: list[str] = check_mode_exits(tree, path) + check_fill_behaviour(tree, path)
 
     # Walking templates rather than BeginStoryboards gives each one its name scope.
     for template in tree.iter():
@@ -192,7 +229,8 @@ def main() -> int:
         return 1
 
     print(f"all {len(shared)} shared storyboards resolve in every template that runs them, "
-          f"and no mode-conditioned trigger animates on exit")
+          f"no shared storyboard holds a value,\n"
+          f"and no mode-conditioned trigger undoes a state it does not own")
     return 0
 
 

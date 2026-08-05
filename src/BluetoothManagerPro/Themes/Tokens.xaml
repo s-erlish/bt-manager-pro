@@ -70,12 +70,9 @@
     <Duration x:Key="Motion.Slow">0:0:0.52</Duration>
 
     <!--
-        Lite mode's duration. Every state has a second, identical storyboard timed with
-        this, so turning the decoration off changes how a state arrives and never whether
-        it arrives: the same animation reaches the same end value and holds it, which is
-        what keeps a checked box checked and a hovered button lit.
+        Lite mode needs no duration of its own. States are carried by Setters, so taking the
+        animation away leaves the state arriving instantly rather than leaving it behind.
     -->
-    <Duration x:Key="Motion.None">0:0:0</Duration>
 
     <!--
         The scan bar's frame rate is written into its own style rather than kept here:
