@@ -9,6 +9,14 @@ is resolved against the template's name scope when the animation *begins*, so a 
 part builds cleanly, passes the resource check, and throws the first time a user hovers the
 control. Here, the names a storyboard targets must be declared by the template that runs it.
 
+**Shared storyboards versus template transforms.** A storyboard held in a resource
+dictionary cannot animate a transform declared inside a control template. WPF works out
+which of a template's freezables have to stay mutable by reading the template, and a
+storyboard living in another dictionary is not part of what it reads — so the transform is
+frozen, the animation is dropped without a word, and the control simply never moves. This
+is what stopped every toggle switch from throwing. Shared storyboards must therefore target
+properties of the elements themselves (Opacity, Margin), never a named transform.
+
 **Mode-conditioned exits.** Lite mode is a condition on the triggers that enter a state, so
 each state has an "and animated" branch and an "and lite" one. A trigger fires its
 ExitActions whenever its condition set stops matching and cannot tell why — so putting the
@@ -54,6 +62,15 @@ def target_names(storyboard: ET.Element) -> set[str]:
 
 def declared_names(template: ET.Element) -> set[str]:
     return {node.get(f"{X}Name") for node in template.iter() if node.get(f"{X}Name")}
+
+
+def transform_names(template: ET.Element) -> set[str]:
+    """Named transforms in the template — the things a shared storyboard must not touch."""
+    return {
+        node.get(f"{X}Name")
+        for node in template.iter()
+        if node.get(f"{X}Name") and local(node.tag).endswith("Transform")
+    }
 
 
 def collect_shared(tree: ET.ElementTree) -> dict[str, set[str]]:
@@ -102,6 +119,7 @@ def check_file(path: str, shared: dict[str, set[str]]) -> list[str]:
             continue
 
         available = declared_names(template)
+        transforms = transform_names(template)
 
         for node in template.iter():
             if local(node.tag) != "BeginStoryboard":
@@ -120,6 +138,14 @@ def check_file(path: str, shared: dict[str, set[str]]) -> list[str]:
                     continue
 
                 wanted = shared[key]
+
+                # Only shared storyboards are affected; an inline one is read along with the
+                # template, so WPF keeps the transform it names mutable.
+                for name in sorted(wanted & transforms):
+                    problems.append(
+                        f"{path}: shared storyboard '{key}' animates the transform '{name}' — "
+                        f"WPF freezes a template transform no inline storyboard names, so this "
+                        f"animation would be discarded in silence")
             else:
                 wanted = set()
                 for child in node:

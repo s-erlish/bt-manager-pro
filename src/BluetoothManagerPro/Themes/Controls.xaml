@@ -143,61 +143,53 @@
     </Storyboard>
 
 
+    <!--
+        The swatch dot swells by giving back its margin, for the same reason the switch
+        travels on one: a shared storyboard cannot touch a transform declared in a template.
+        7 at rest inside a 44px button leaves a 30px dot; 5.2 makes it 33.6, the same 12%.
+    -->
     <Storyboard x:Key="SB.Swell.In">
-        <DoubleAnimation Storyboard.TargetName="DotScale" Storyboard.TargetProperty="ScaleX"
-                         To="1.12" Duration="{StaticResource Motion.Normal}">
-            <DoubleAnimation.EasingFunction>
+        <ThicknessAnimation Storyboard.TargetName="Dot" Storyboard.TargetProperty="Margin"
+                            To="5.2" Duration="{StaticResource Motion.Normal}">
+            <ThicknessAnimation.EasingFunction>
                 <CubicEase EasingMode="EaseOut" />
-            </DoubleAnimation.EasingFunction>
-        </DoubleAnimation>
-        <DoubleAnimation Storyboard.TargetName="DotScale" Storyboard.TargetProperty="ScaleY"
-                         To="1.12" Duration="{StaticResource Motion.Normal}">
-            <DoubleAnimation.EasingFunction>
-                <CubicEase EasingMode="EaseOut" />
-            </DoubleAnimation.EasingFunction>
-        </DoubleAnimation>
+            </ThicknessAnimation.EasingFunction>
+        </ThicknessAnimation>
     </Storyboard>
 
     <Storyboard x:Key="SB.Swell.Out">
-        <DoubleAnimation Storyboard.TargetName="DotScale" Storyboard.TargetProperty="ScaleX"
-                         To="1" Duration="{StaticResource Motion.Slow}">
-            <DoubleAnimation.EasingFunction>
+        <ThicknessAnimation Storyboard.TargetName="Dot" Storyboard.TargetProperty="Margin"
+                            To="7" Duration="{StaticResource Motion.Slow}">
+            <ThicknessAnimation.EasingFunction>
                 <CubicEase EasingMode="EaseOut" />
-            </DoubleAnimation.EasingFunction>
-        </DoubleAnimation>
-        <DoubleAnimation Storyboard.TargetName="DotScale" Storyboard.TargetProperty="ScaleY"
-                         To="1" Duration="{StaticResource Motion.Slow}">
-            <DoubleAnimation.EasingFunction>
-                <CubicEase EasingMode="EaseOut" />
-            </DoubleAnimation.EasingFunction>
-        </DoubleAnimation>
+            </ThicknessAnimation.EasingFunction>
+        </ThicknessAnimation>
     </Storyboard>
 
     <!-- Lite mode has no swell, but it still has to undo one caught mid-hover. -->
     <Storyboard x:Key="SB.Swell.Out.Lite">
-        <DoubleAnimation Storyboard.TargetName="DotScale" Storyboard.TargetProperty="ScaleX"
-                         To="1" Duration="{StaticResource Motion.None}" />
-        <DoubleAnimation Storyboard.TargetName="DotScale" Storyboard.TargetProperty="ScaleY"
-                         To="1" Duration="{StaticResource Motion.None}" />
+        <ThicknessAnimation Storyboard.TargetName="Dot" Storyboard.TargetProperty="Margin"
+                            To="7" Duration="{StaticResource Motion.None}" />
     </Storyboard>
 
+    <!-- Thumb travel: 4 at rest, 22 thrown. See the switch template for why it is a margin. -->
     <Storyboard x:Key="SB.Switch.On">
         <DoubleAnimation Storyboard.TargetName="TrackOn" Storyboard.TargetProperty="Opacity"
                          To="1" Duration="{StaticResource Motion.Normal}" />
         <DoubleAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Opacity"
                          To="1" Duration="{StaticResource Motion.Normal}" />
-        <DoubleAnimation Storyboard.TargetName="ThumbShift" Storyboard.TargetProperty="X"
-                         To="18" Duration="{StaticResource Motion.Normal}">
-            <DoubleAnimation.EasingFunction>
+        <ThicknessAnimation Storyboard.TargetName="Thumb" Storyboard.TargetProperty="Margin"
+                            To="22,0,0,0" Duration="{StaticResource Motion.Normal}">
+            <ThicknessAnimation.EasingFunction>
                 <CubicEase EasingMode="EaseOut" />
-            </DoubleAnimation.EasingFunction>
-        </DoubleAnimation>
-        <DoubleAnimation Storyboard.TargetName="ThumbOnShift" Storyboard.TargetProperty="X"
-                         To="18" Duration="{StaticResource Motion.Normal}">
-            <DoubleAnimation.EasingFunction>
+            </ThicknessAnimation.EasingFunction>
+        </ThicknessAnimation>
+        <ThicknessAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Margin"
+                            To="22,0,0,0" Duration="{StaticResource Motion.Normal}">
+            <ThicknessAnimation.EasingFunction>
                 <CubicEase EasingMode="EaseOut" />
-            </DoubleAnimation.EasingFunction>
-        </DoubleAnimation>
+            </ThicknessAnimation.EasingFunction>
+        </ThicknessAnimation>
     </Storyboard>
 
     <Storyboard x:Key="SB.Switch.Off">
@@ -205,18 +197,18 @@
                          To="0" Duration="{StaticResource Motion.Normal}" />
         <DoubleAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Opacity"
                          To="0" Duration="{StaticResource Motion.Normal}" />
-        <DoubleAnimation Storyboard.TargetName="ThumbShift" Storyboard.TargetProperty="X"
-                         To="0" Duration="{StaticResource Motion.Normal}">
-            <DoubleAnimation.EasingFunction>
+        <ThicknessAnimation Storyboard.TargetName="Thumb" Storyboard.TargetProperty="Margin"
+                            To="4,0,0,0" Duration="{StaticResource Motion.Normal}">
+            <ThicknessAnimation.EasingFunction>
                 <CubicEase EasingMode="EaseOut" />
-            </DoubleAnimation.EasingFunction>
-        </DoubleAnimation>
-        <DoubleAnimation Storyboard.TargetName="ThumbOnShift" Storyboard.TargetProperty="X"
-                         To="0" Duration="{StaticResource Motion.Normal}">
-            <DoubleAnimation.EasingFunction>
+            </ThicknessAnimation.EasingFunction>
+        </ThicknessAnimation>
+        <ThicknessAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Margin"
+                            To="4,0,0,0" Duration="{StaticResource Motion.Normal}">
+            <ThicknessAnimation.EasingFunction>
                 <CubicEase EasingMode="EaseOut" />
-            </DoubleAnimation.EasingFunction>
-        </DoubleAnimation>
+            </ThicknessAnimation.EasingFunction>
+        </ThicknessAnimation>
     </Storyboard>
 
     <Storyboard x:Key="SB.Switch.On.Lite">
@@ -224,10 +216,10 @@
                          To="1" Duration="{StaticResource Motion.None}" />
         <DoubleAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Opacity"
                          To="1" Duration="{StaticResource Motion.None}" />
-        <DoubleAnimation Storyboard.TargetName="ThumbShift" Storyboard.TargetProperty="X"
-                         To="18" Duration="{StaticResource Motion.None}" />
-        <DoubleAnimation Storyboard.TargetName="ThumbOnShift" Storyboard.TargetProperty="X"
-                         To="18" Duration="{StaticResource Motion.None}" />
+        <ThicknessAnimation Storyboard.TargetName="Thumb" Storyboard.TargetProperty="Margin"
+                            To="22,0,0,0" Duration="{StaticResource Motion.None}" />
+        <ThicknessAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Margin"
+                            To="22,0,0,0" Duration="{StaticResource Motion.None}" />
     </Storyboard>
 
 
@@ -656,12 +648,7 @@
                                  Margin="2" />
                         <Ellipse x:Name="Dot"
                                  Fill="{TemplateBinding Background}"
-                                 Margin="7"
-                                 RenderTransformOrigin="0.5,0.5">
-                            <Ellipse.RenderTransform>
-                                <ScaleTransform x:Name="DotScale" ScaleX="1" ScaleY="1" />
-                            </Ellipse.RenderTransform>
-                        </Ellipse>
+                                 Margin="7" />
                         <Path x:Name="Tick"
                               Opacity="0"
                               Data="{StaticResource Icon.Check}"
@@ -756,25 +743,27 @@
                         <Border x:Name="TrackRelief"
                                 Style="{StaticResource Relief.Inset}"
                                 CornerRadius="11" />
+                        <!--
+                            The thumb travels on its own Margin rather than on a render
+                            transform. A shared storyboard cannot move a transform declared
+                            in a template: WPF decides which of a template's freezables to
+                            leave mutable by reading the template, and a storyboard sitting
+                            in another dictionary is not part of it — so the transform is
+                            frozen, the animation is discarded without complaint, and the
+                            switch never moves. Margin belongs to the element itself, which
+                            is always animatable.
+                        -->
                         <Ellipse x:Name="Thumb"
                                  Width="14" Height="14"
                                  HorizontalAlignment="Left"
                                  Margin="4,0,0,0"
-                                 Fill="{DynamicResource Brush.Text.Secondary}">
-                            <Ellipse.RenderTransform>
-                                <TranslateTransform x:Name="ThumbShift" X="0" />
-                            </Ellipse.RenderTransform>
-                        </Ellipse>
+                                 Fill="{DynamicResource Brush.Text.Secondary}" />
                         <Ellipse x:Name="ThumbOn"
                                  Opacity="0"
                                  Width="14" Height="14"
                                  HorizontalAlignment="Left"
                                  Margin="4,0,0,0"
-                                 Fill="{DynamicResource Brush.Text.OnAccent}">
-                            <Ellipse.RenderTransform>
-                                <TranslateTransform x:Name="ThumbOnShift" X="0" />
-                            </Ellipse.RenderTransform>
-                        </Ellipse>
+                                 Fill="{DynamicResource Brush.Text.OnAccent}" />
                     </Grid>
 
                     <ControlTemplate.Triggers>
