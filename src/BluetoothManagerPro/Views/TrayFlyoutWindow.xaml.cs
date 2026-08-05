@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using BluetoothManagerPro.Infrastructure;
 using BluetoothManagerPro.Interop;
 
 namespace BluetoothManagerPro.Views;
@@ -16,6 +17,9 @@ public partial class TrayFlyoutWindow : Window
     public TrayFlyoutWindow()
     {
         InitializeComponent();
+
+        // Its own visual tree, so it needs the appearance mode handed to it directly.
+        ThemeProps.Adopt(this);
         Deactivated += (_, _) => Hide();
     }
 
@@ -51,6 +55,12 @@ public partial class TrayFlyoutWindow : Window
 
         Activate();
         WindowNative.SetForegroundWindow(new WindowInteropHelper(this).Handle);
+
+        if (!ThemeProps.GetAnimated(this))
+        {
+            Opacity = 1;
+            return;
+        }
 
         BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(140))
         {

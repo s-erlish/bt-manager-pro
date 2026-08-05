@@ -46,6 +46,42 @@ public sealed class DeviceSnapshot
 
     public string AddressText => FormatAddress(Address);
 
+    /// <summary>RSSI mapped onto the 0..4 scale the list actually draws.</summary>
+    public int SignalBars => ToBars(SignalStrength);
+
+    /// <summary>Shared by the snapshot and the row so both agree on what a change is.</summary>
+    public static int ToBars(int? rssi) => rssi switch
+    {
+        null => 0,
+        >= -55 => 4,
+        >= -67 => 3,
+        >= -80 => 2,
+        _ => 1,
+    };
+
+    /// <summary>
+    /// True when <paramref name="other"/> would draw exactly the same row.
+    ///
+    /// The passive watcher re-reports an advertising LE endpoint several times a second,
+    /// and every one of those used to cost a dispatcher hop, a view re-sort and a tray-icon
+    /// redraw. Nearly all of them differ only in <see cref="LastSeen"/> and by a decibel or
+    /// two of RSSI, so time is ignored outright and signal is compared as bars — the only
+    /// part of it the interface ever shows.
+    /// </summary>
+    public bool RendersSameAs(DeviceSnapshot other)
+        => Address == other.Address
+           && ContainerId == other.ContainerId
+           && Transport == other.Transport
+           && Category == other.Category
+           && ClassOfDevice == other.ClassOfDevice
+           && IsPaired == other.IsPaired
+           && CanPair == other.CanPair
+           && IsConnected == other.IsConnected
+           && IsPresent == other.IsPresent
+           && BatteryPercent == other.BatteryPercent
+           && SignalBars == other.SignalBars
+           && string.Equals(Name, other.Name, StringComparison.Ordinal);
+
     /// <summary>Renders a 48-bit address MSB-first, e.g. <c>A4:C1:38:0F:2B:9E</c>.</summary>
     public static string FormatAddress(ulong address)
     {

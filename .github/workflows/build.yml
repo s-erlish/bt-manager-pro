@@ -30,6 +30,12 @@ jobs:
         shell: pwsh
         run: python tools/check_xaml_resources.py
 
+      # Storyboard.TargetName is resolved when an animation begins, so a template part
+      # renamed out from under a shared storyboard builds clean and throws on first hover.
+      - name: Check storyboard targets
+        shell: pwsh
+        run: python tools/check_xaml_storyboards.py
+
       - name: Verify icons are reproducible
         shell: pwsh
         run: |

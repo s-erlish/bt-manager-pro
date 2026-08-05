@@ -32,9 +32,9 @@
     <Product>Bluetooth Manager Pro</Product>
     <AssemblyTitle>Bluetooth Manager Pro</AssemblyTitle>
     <Company>Bluetooth Manager Pro</Company>
-    <Version>1.0.6</Version>
-    <FileVersion>1.0.6.0</FileVersion>
-    <AssemblyVersion>1.0.6.0</AssemblyVersion>
+    <Version>1.1.0</Version>
+    <FileVersion>1.1.0.0</FileVersion>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
     <Copyright>MIT License</Copyright>
 
     <!-- Lets the project be restored/compiled from Linux or macOS CI agents. -->
@@ -42,6 +42,25 @@
 
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <DebugType>embedded</DebugType>
+
+    <!--
+        Runtime knobs for a process that spends its life idle in the tray.
+
+        Background GC buys shorter pauses by keeping a dedicated thread and a larger
+        retained heap — a good trade for a server, a poor one here, where the app allocates
+        almost nothing between user actions and a pause nobody is present for costs nothing.
+        Turning it off removes the thread and lets the heap shrink to what is live.
+
+        Quick JIT for loops keeps startup code out of the optimising compiler; nothing in
+        this app runs a loop hot enough to want tier 1 up front. EventSource and the
+        metadata updater are diagnostics infrastructure this app never uses.
+    -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <RetainVMGarbageCollection>false</RetainVMGarbageCollection>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+    <EventSourceSupport>false</EventSourceSupport>
+    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
 
     <!--
         WFAC010 tells WinForms apps to move DPI settings out of the manifest. This is a

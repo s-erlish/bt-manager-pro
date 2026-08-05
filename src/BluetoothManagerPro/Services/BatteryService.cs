@@ -79,47 +79,60 @@ public sealed class BatteryService
     /// <summary>
     /// Sweeps the PnP device tree for hands-free battery levels, keyed by container id
     /// so callers can join them against association endpoints.
+    ///
+    /// The narrow BTHENUM query is the only one that runs in the normal case. The wide
+    /// query — every device node on the machine — is reserved for the one situation it was
+    /// meant for: a Windows build that rejects the "starts with" operator outright, which
+    /// shows up as an exception. An empty result is not that. Retrying wide whenever the
+    /// narrow sweep came back empty meant enumerating the entire device tree every minute
+    /// on every machine whose headset does not report a battery level, which is most of
+    /// them, to arrive at the same empty answer.
     /// </summary>
     public async Task<Dictionary<Guid, int>> ReadClassicByContainerAsync()
     {
+        try
+        {
+            return await SweepAsync($"{InstanceIdProperty}:~<\"BTHENUM\"");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Filtered battery sweep rejected ({ex.Message}); retrying across all devices.");
+        }
+
+        try
+        {
+            return await SweepAsync(string.Empty);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Classic battery sweep failed: {ex.Message}");
+            return new Dictionary<Guid, int>();
+        }
+    }
+
+    private static async Task<Dictionary<Guid, int>> SweepAsync(string filter)
+    {
         var result = new Dictionary<Guid, int>();
 
-        // Narrow to the classic Bluetooth enumerator first; fall back to the full tree
-        // if this build rejects the "starts with" operator.
-        foreach (string filter in new[] { $"{InstanceIdProperty}:~<\"BTHENUM\"", string.Empty })
+        DeviceInformationCollection devices = await DeviceInformation.FindAllAsync(
+            filter,
+            new[] { BatteryProperty, ContainerIdProperty },
+            DeviceInformationKind.Device);
+
+        foreach (DeviceInformation device in devices)
         {
-            try
+            if (!TryReadPercent(device, out int percent))
             {
-                DeviceInformationCollection devices = await DeviceInformation.FindAllAsync(
-                    filter,
-                    new[] { BatteryProperty, ContainerIdProperty },
-                    DeviceInformationKind.Device);
-
-                foreach (DeviceInformation device in devices)
-                {
-                    if (!TryReadPercent(device, out int percent))
-                    {
-                        continue;
-                    }
-
-                    if (!device.Properties.TryGetValue(ContainerIdProperty, out object? container) ||
-                        container is not Guid containerId || containerId == Guid.Empty)
-                    {
-                        continue;
-                    }
-
-                    result[containerId] = percent;
-                }
-
-                if (result.Count > 0 || filter.Length == 0)
-                {
-                    return result;
-                }
+                continue;
             }
-            catch (Exception ex)
+
+            if (!device.Properties.TryGetValue(ContainerIdProperty, out object? container) ||
+                container is not Guid containerId || containerId == Guid.Empty)
             {
-                Debug.WriteLine($"Classic battery sweep failed (filter '{filter}'): {ex.Message}");
+                continue;
             }
+
+            result[containerId] = percent;
         }
 
         return result;

@@ -47,7 +47,7 @@
                             CornerRadius="{StaticResource Radius.Medium}"
                             TextElement.Foreground="{DynamicResource Brush.Text.Secondary}">
                         <Grid>
-                            <Border Background="{StaticResource Sheen.Raised}"
+                            <Border Style="{StaticResource Relief.Raised}"
                                     CornerRadius="{StaticResource Radius.Medium}" />
                             <Path Data="{Binding Category, Converter={StaticResource CategoryToIcon}}"
                                   Style="{StaticResource IconPath}" />
@@ -250,7 +250,7 @@
                         Background="{DynamicResource Brush.Surface.Overlay}"
                         TextElement.Foreground="{DynamicResource Brush.Text.Secondary}">
                     <Grid>
-                        <Border Background="{StaticResource Sheen.Raised}"
+                        <Border Style="{StaticResource Relief.Raised}"
                                 CornerRadius="{StaticResource Radius.Medium}" />
                         <Path Data="{StaticResource Icon.Bluetooth}" Style="{StaticResource IconPath}" />
                     </Grid>
@@ -416,6 +416,29 @@
 
                     <Border Style="{StaticResource Card}" Padding="14,12">
                         <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="Лёгкий режим"
+                                               Style="{StaticResource Text.Body}"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Style="{StaticResource Text.Caption}"
+                                               Margin="0,2,0,0"
+                                               TextWrapping="Wrap"
+                                               Text="Без анимаций, теней и рельефа, опрос устройств реже — минимум нагрузки" />
+                                </StackPanel>
+                                <ToggleButton Grid.Column="1"
+                                              Style="{StaticResource Toggle.Switch}"
+                                              VerticalAlignment="Center"
+                                              Margin="12,0,0,0"
+                                              IsChecked="{Binding LiteMode, Mode=TwoWay}" />
+                            </Grid>
+
+                            <Border Height="1" Background="{DynamicResource Brush.Border.Subtle}" Margin="0,12,0,12" />
+
                             <CheckBox Style="{StaticResource CheckBox.Default}"
                                       Content="Запускать вместе с Windows"
                                       IsChecked="{Binding AutoStart, Mode=TwoWay}" />

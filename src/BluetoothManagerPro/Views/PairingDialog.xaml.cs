@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using BluetoothManagerPro.Infrastructure;
 using BluetoothManagerPro.Services;
 using Windows.Devices.Enumeration;
 
@@ -16,6 +17,9 @@ public partial class PairingDialog : Window
     private PairingDialog(PairingPrompt prompt)
     {
         InitializeComponent();
+
+        // Its own visual tree, so it needs the appearance mode handed to it directly.
+        ThemeProps.Adopt(this);
         _kind = prompt.Kind;
 
         DeviceNameText.Text = prompt.DeviceName;

@@ -48,4 +48,26 @@ internal static class WindowNative
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    // ---- Working set --------------------------------------------------------
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetCurrentProcess();
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetProcessWorkingSetSize(IntPtr process, IntPtr minimum, IntPtr maximum);
+
+    /// <summary>
+    /// Asks Windows to take back the pages the process is no longer touching.
+    ///
+    /// Passing -1 for both bounds is the documented way to say "trim to what is actually in
+    /// use"; it does not free anything or cap the process, it moves cold pages out of the
+    /// working set and lets them come back on demand. Worth doing exactly once, after the
+    /// window has been put away and WPF has released its render resources — a tray app then
+    /// sits on a working set that reflects what it is really doing rather than the high
+    /// water mark of the last time its interface was on screen.
+    /// </summary>
+    public static void TrimWorkingSet()
+        => SetProcessWorkingSetSize(GetCurrentProcess(), (IntPtr)(-1), (IntPtr)(-1));
 }

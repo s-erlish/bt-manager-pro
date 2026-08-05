@@ -22,7 +22,12 @@ namespace BluetoothManagerPro.Services;
 ///     saturates the 2.4 GHz band and audibly stutters connected headsets, so it runs
 ///     for <see cref="InquirySeconds"/> and stops itself.
 ///
-/// All events are re-raised on the UI thread.
+/// Updates are filtered and batched before they reach the UI thread. The watcher fires
+/// <c>Updated</c> for every advertisement packet in the air, which in a normal room is
+/// several times a second per device; forwarding each one cost a dispatcher hop, a
+/// collection-view re-sort and a tray-icon rebuild for a row that looked identical
+/// afterwards. Only snapshots that would actually draw differently are queued, and the
+/// queue is drained once per dispatcher pass at background priority.
 /// </summary>
 public sealed class BluetoothDiscoveryService : IDisposable
 {
@@ -62,17 +67,29 @@ public sealed class BluetoothDiscoveryService : IDisposable
 
     private readonly Dispatcher _dispatcher;
     private readonly Dictionary<string, DeviceInformation> _cache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Last snapshot handed to the UI per endpoint, so repeats can be dropped.</summary>
+    private readonly Dictionary<string, DeviceSnapshot> _published = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Snapshots waiting for the next drain, at most one per endpoint.</summary>
+    private readonly Dictionary<string, DeviceSnapshot> _pending = new(StringComparer.OrdinalIgnoreCase);
+
     private readonly object _sync = new();
 
     private DeviceWatcher? _passive;
     private DeviceWatcher? _inquiry;
     private DispatcherTimer? _inquiryTimer;
+    private bool _flushQueued;
     private bool _disposed;
 
     public BluetoothDiscoveryService(Dispatcher dispatcher) => _dispatcher = dispatcher;
 
-    /// <summary>Raised on the UI thread when a device appears or any of its properties change.</summary>
-    public event Action<DeviceSnapshot>? DeviceChanged;
+    /// <summary>
+    /// Raised on the UI thread with every endpoint that changed since the last drain.
+    /// A batch rather than one event per endpoint: a watcher restart reports the whole
+    /// known world at once, and re-sorting the list per device would be quadratic.
+    /// </summary>
+    public event Action<IReadOnlyList<DeviceSnapshot>>? DevicesChanged;
 
     /// <summary>Raised on the UI thread when an endpoint is removed by the passive watcher.</summary>
     public event Action<string>? DeviceRemoved;
@@ -123,6 +140,8 @@ public sealed class BluetoothDiscoveryService : IDisposable
         lock (_sync)
         {
             _cache.Clear();
+            _published.Clear();
+            _pending.Clear();
         }
 
         Start();
@@ -237,30 +256,41 @@ public sealed class BluetoothDiscoveryService : IDisposable
 
     private void OnAdded(DeviceWatcher sender, DeviceInformation info)
     {
+        bool drain;
         lock (_sync)
         {
             _cache[info.Id] = info;
+            drain = Queue(info);
         }
 
-        Publish(info);
+        if (drain)
+        {
+            _dispatcher.InvokeAsync(Drain, DispatcherPriority.Background);
+        }
     }
 
     private void OnUpdated(DeviceWatcher sender, DeviceInformationUpdate update)
     {
-        DeviceInformation? info;
+        bool drain;
         lock (_sync)
         {
-            if (!_cache.TryGetValue(update.Id, out info))
+            if (!_cache.TryGetValue(update.Id, out DeviceInformation? info))
             {
                 return;
             }
 
             // An update carries only the changed properties, so it has to be folded into
-            // the cached object rather than read on its own.
+            // the cached object rather than read on its own. Reading it back happens under
+            // the same lock: two watchers can report the same endpoint at once, and
+            // snapshotting a half-applied update would publish a torn row.
             info.Update(update);
+            drain = Queue(info);
         }
 
-        Publish(info);
+        if (drain)
+        {
+            _dispatcher.InvokeAsync(Drain, DispatcherPriority.Background);
+        }
     }
 
     private void OnRemoved(DeviceWatcher sender, DeviceInformationUpdate update)
@@ -268,15 +298,59 @@ public sealed class BluetoothDiscoveryService : IDisposable
         lock (_sync)
         {
             _cache.Remove(update.Id);
+            _published.Remove(update.Id);
+            _pending.Remove(update.Id);
         }
 
         _dispatcher.InvokeAsync(() => DeviceRemoved?.Invoke(update.Id));
     }
 
-    private void Publish(DeviceInformation info)
+    /// <summary>
+    /// Folds one endpoint into the pending batch. Returns true when the caller owes the
+    /// dispatcher a drain. Must be called under <see cref="_sync"/>.
+    /// </summary>
+    private bool Queue(DeviceInformation info)
     {
         DeviceSnapshot snapshot = ToSnapshot(info);
-        _dispatcher.InvokeAsync(() => DeviceChanged?.Invoke(snapshot));
+
+        // The overwhelming majority of watcher events say nothing new. Dropping them here
+        // is what keeps an idle app off the CPU.
+        if (_published.TryGetValue(snapshot.Id, out DeviceSnapshot? last) && last.RendersSameAs(snapshot))
+        {
+            return false;
+        }
+
+        _published[snapshot.Id] = snapshot;
+
+        // Newest wins: a burst for one endpoint collapses to a single row update.
+        _pending[snapshot.Id] = snapshot;
+
+        if (_flushQueued)
+        {
+            return false;
+        }
+
+        _flushQueued = true;
+        return true;
+    }
+
+    private void Drain()
+    {
+        DeviceSnapshot[] batch;
+        lock (_sync)
+        {
+            _flushQueued = false;
+            if (_pending.Count == 0)
+            {
+                return;
+            }
+
+            batch = new DeviceSnapshot[_pending.Count];
+            _pending.Values.CopyTo(batch, 0);
+            _pending.Clear();
+        }
+
+        DevicesChanged?.Invoke(batch);
     }
 
     private static DeviceSnapshot ToSnapshot(DeviceInformation info)
@@ -540,6 +614,8 @@ public sealed class BluetoothDiscoveryService : IDisposable
         lock (_sync)
         {
             _cache.Clear();
+            _published.Clear();
+            _pending.Clear();
         }
     }
 }

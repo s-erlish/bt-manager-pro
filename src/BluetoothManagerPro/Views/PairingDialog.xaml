@@ -14,16 +14,7 @@
         FontSize="{StaticResource Font.Size.Body}"
         UseLayoutRounding="True">
 
-    <Border Background="{DynamicResource Brush.Surface.Raised}"
-            BorderBrush="{DynamicResource Brush.Border.Strong}"
-            BorderThickness="1"
-            CornerRadius="{StaticResource Radius.Large}"
-            Padding="20"
-            Margin="12">
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270" Opacity="0.34" Color="#000000" />
-        </Border.Effect>
-
+    <Border Style="{StaticResource Popover}" Padding="20" Margin="12">
         <StackPanel>
             <StackPanel Orientation="Horizontal">
                 <Border Width="38" Height="38"
@@ -31,7 +22,7 @@
                         Background="{DynamicResource Brush.Accent.Muted}"
                         TextElement.Foreground="{DynamicResource Brush.Accent}">
                     <Grid>
-                        <Border Background="{StaticResource Sheen.Raised}"
+                        <Border Style="{StaticResource Relief.Raised}"
                                 CornerRadius="{StaticResource Radius.Medium}" />
                         <Path Data="{StaticResource Icon.Bluetooth}" Style="{StaticResource IconPath}" />
                     </Grid>

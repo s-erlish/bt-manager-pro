@@ -18,6 +18,279 @@
         <ResourceDictionary Source="pack://application:,,,/Themes/Icons.xaml" />
     </ResourceDictionary.MergedDictionaries>
 
+    <!-- ==================== State storyboards ==================== -->
+    <!--
+        Every interaction state is drawn as an overlay layer whose opacity animates, and
+        every one of them exists twice: once with a duration, once with none. Which pair
+        runs is decided by ThemeProps.Animated, an inherited property set on the window
+        root, so lite mode reaches every control without any template knowing where the
+        setting lives.
+
+        Both variants are animations that hold their end value, deliberately. A Setter would
+        have been shorter, but a Setter loses to a held animation — a control that happened
+        to be hovered when the mode changed would have kept the animated value with nothing
+        left to walk it back. Two symmetric pairs cannot get stuck.
+
+        The storyboards are resources rather than inline copies because Storyboard.TargetName
+        resolves against the template being animated: one "fade the layer named Hover"
+        storyboard serves every template that has a layer by that name.
+    -->
+
+    <Storyboard x:Key="SB.Hover.In">
+        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <!-- Lingers on the way out; that is the fade the eye reads as soft. -->
+    <Storyboard x:Key="SB.Hover.Out">
+        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.Slow}">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Hover.In.Lite">
+        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.None}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Hover.Out.Lite">
+        <DoubleAnimation Storyboard.TargetName="Hover" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.None}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Press.In">
+        <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Fast}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Press.Out">
+        <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.Normal}">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Press.In.Lite">
+        <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.None}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Press.Out.Lite">
+        <DoubleAnimation Storyboard.TargetName="Press" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.None}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Selected.In">
+        <DoubleAnimation Storyboard.TargetName="Selected" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Selected.Out">
+        <DoubleAnimation Storyboard.TargetName="Selected" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.Slow}">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Selected.In.Lite">
+        <DoubleAnimation Storyboard.TargetName="Selected" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.None}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Selected.Out.Lite">
+        <DoubleAnimation Storyboard.TargetName="Selected" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.None}" />
+    </Storyboard>
+
+    <!-- Ring plus tick: the swatch and the checkbox both light two layers at once. -->
+    <Storyboard x:Key="SB.Mark.In">
+        <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}" />
+        <DoubleAnimation Storyboard.TargetName="Tick" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Mark.Out">
+        <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.Slow}" />
+        <DoubleAnimation Storyboard.TargetName="Tick" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.Slow}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Mark.In.Lite">
+        <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.None}" />
+        <DoubleAnimation Storyboard.TargetName="Tick" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.None}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Mark.Out.Lite">
+        <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.None}" />
+        <DoubleAnimation Storyboard.TargetName="Tick" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.None}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Swell.In">
+        <DoubleAnimation Storyboard.TargetName="DotScale" Storyboard.TargetProperty="ScaleX"
+                         To="1.12" Duration="{StaticResource Motion.Normal}">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+        <DoubleAnimation Storyboard.TargetName="DotScale" Storyboard.TargetProperty="ScaleY"
+                         To="1.12" Duration="{StaticResource Motion.Normal}">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Swell.Out">
+        <DoubleAnimation Storyboard.TargetName="DotScale" Storyboard.TargetProperty="ScaleX"
+                         To="1" Duration="{StaticResource Motion.Slow}">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+        <DoubleAnimation Storyboard.TargetName="DotScale" Storyboard.TargetProperty="ScaleY"
+                         To="1" Duration="{StaticResource Motion.Slow}">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <!-- Lite mode has no swell, but it still has to undo one caught mid-hover. -->
+    <Storyboard x:Key="SB.Swell.Out.Lite">
+        <DoubleAnimation Storyboard.TargetName="DotScale" Storyboard.TargetProperty="ScaleX"
+                         To="1" Duration="{StaticResource Motion.None}" />
+        <DoubleAnimation Storyboard.TargetName="DotScale" Storyboard.TargetProperty="ScaleY"
+                         To="1" Duration="{StaticResource Motion.None}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Switch.On">
+        <DoubleAnimation Storyboard.TargetName="TrackOn" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}" />
+        <DoubleAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}" />
+        <DoubleAnimation Storyboard.TargetName="ThumbShift" Storyboard.TargetProperty="X"
+                         To="18" Duration="{StaticResource Motion.Normal}">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+        <DoubleAnimation Storyboard.TargetName="ThumbOnShift" Storyboard.TargetProperty="X"
+                         To="18" Duration="{StaticResource Motion.Normal}">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Switch.Off">
+        <DoubleAnimation Storyboard.TargetName="TrackOn" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.Normal}" />
+        <DoubleAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.Normal}" />
+        <DoubleAnimation Storyboard.TargetName="ThumbShift" Storyboard.TargetProperty="X"
+                         To="0" Duration="{StaticResource Motion.Normal}">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+        <DoubleAnimation Storyboard.TargetName="ThumbOnShift" Storyboard.TargetProperty="X"
+                         To="0" Duration="{StaticResource Motion.Normal}">
+            <DoubleAnimation.EasingFunction>
+                <CubicEase EasingMode="EaseOut" />
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Switch.On.Lite">
+        <DoubleAnimation Storyboard.TargetName="TrackOn" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.None}" />
+        <DoubleAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.None}" />
+        <DoubleAnimation Storyboard.TargetName="ThumbShift" Storyboard.TargetProperty="X"
+                         To="18" Duration="{StaticResource Motion.None}" />
+        <DoubleAnimation Storyboard.TargetName="ThumbOnShift" Storyboard.TargetProperty="X"
+                         To="18" Duration="{StaticResource Motion.None}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Switch.Off.Lite">
+        <DoubleAnimation Storyboard.TargetName="TrackOn" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.None}" />
+        <DoubleAnimation Storyboard.TargetName="ThumbOn" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.None}" />
+        <DoubleAnimation Storyboard.TargetName="ThumbShift" Storyboard.TargetProperty="X"
+                         To="0" Duration="{StaticResource Motion.None}" />
+        <DoubleAnimation Storyboard.TargetName="ThumbOnShift" Storyboard.TargetProperty="X"
+                         To="0" Duration="{StaticResource Motion.None}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Focus.In">
+        <DoubleAnimation Storyboard.TargetName="Focused" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.Normal}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Focus.Out">
+        <DoubleAnimation Storyboard.TargetName="Focused" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.Slow}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Focus.In.Lite">
+        <DoubleAnimation Storyboard.TargetName="Focused" Storyboard.TargetProperty="Opacity"
+                         To="1" Duration="{StaticResource Motion.None}" />
+    </Storyboard>
+
+    <Storyboard x:Key="SB.Focus.Out.Lite">
+        <DoubleAnimation Storyboard.TargetName="Focused" Storyboard.TargetProperty="Opacity"
+                         To="0" Duration="{StaticResource Motion.None}" />
+    </Storyboard>
+
+    <!-- ==================== Relief ==================== -->
+    <!--
+        The depth gradients as a style rather than a bare brush reference, so lite mode can
+        take them away in one place. Applied to the sheen layer, never to the surface
+        itself, which keeps the colour underneath exactly as the palette computed it.
+    -->
+
+    <Style x:Key="Relief.Raised" TargetType="Border">
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Background" Value="{StaticResource Sheen.Raised}" />
+        <Style.Triggers>
+            <Trigger Property="infra:ThemeProps.Animated" Value="False">
+                <Setter Property="Background" Value="{x:Null}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="Relief.Inset" TargetType="Border">
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Background" Value="{StaticResource Sheen.Inset}" />
+        <Style.Triggers>
+            <Trigger Property="infra:ThemeProps.Animated" Value="False">
+                <Setter Property="Background" Value="{x:Null}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <!-- ==================== Focus ==================== -->
 
     <Style x:Key="FocusRing">
@@ -146,59 +419,61 @@
                     </Grid>
 
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Trigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hover"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="1" Duration="{StaticResource Motion.Normal}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <!-- Lingers on the way out; that is the fade the eye reads as soft. -->
-                                        <DoubleAnimation Storyboard.TargetName="Hover"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0" Duration="{StaticResource Motion.Slow}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.ExitActions>
-                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.In}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.Out}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
 
-                        <Trigger Property="IsPressed" Value="True">
-                            <Trigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Press"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="1" Duration="{StaticResource Motion.Fast}" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Press"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0" Duration="{StaticResource Motion.Normal}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.ExitActions>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.In.Lite}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.Out.Lite}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsPressed" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Press.In}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Press.Out}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsPressed" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Press.In.Lite}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Press.Out.Lite}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <!-- Relief is decoration; lite mode drops the whole layer. -->
+                        <Trigger Property="infra:ThemeProps.Animated" Value="False">
+                            <Setter TargetName="Relief" Property="Background" Value="{x:Null}" />
                         </Trigger>
 
                         <Trigger Property="IsEnabled" Value="False">
@@ -305,64 +580,62 @@
                     </Grid>
 
                     <ControlTemplate.Triggers>
+                        <!-- The colour is a plain Setter: it must land in either mode. -->
                         <Trigger Property="IsChecked" Value="True">
                             <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
-                            <Trigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Selected"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="1" Duration="{StaticResource Motion.Normal}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Selected"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0" Duration="{StaticResource Motion.Slow}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.ExitActions>
                         </Trigger>
 
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Trigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hover"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="1" Duration="{StaticResource Motion.Normal}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hover"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0" Duration="{StaticResource Motion.Slow}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.ExitActions>
-                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Selected.In}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Selected.Out}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Selected.In.Lite}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Selected.Out.Lite}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.In}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.Out}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.In.Lite}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.Out.Lite}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -381,8 +654,12 @@
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
                     <Grid Background="{DynamicResource Brush.Surface.Transparent}">
-                        <!-- Ring sits outside the dot so selection reads without resizing it. -->
-                        <Ellipse x:Name="Ring"
+                        <!--
+                            Ring sits outside the dot so selection reads without resizing it.
+                            Named Mark, like the checkbox's fill: both are "the layer that
+                            says this is chosen", so one pair of storyboards drives both.
+                        -->
+                        <Ellipse x:Name="Mark"
                                  Opacity="0"
                                  Stroke="{TemplateBinding Background}"
                                  StrokeThickness="2"
@@ -404,74 +681,54 @@
                     </Grid>
 
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsChecked" Value="True">
-                            <Trigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Ring"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="1" Duration="{StaticResource Motion.Normal}" />
-                                        <DoubleAnimation Storyboard.TargetName="Tick"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="1" Duration="{StaticResource Motion.Normal}" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Ring"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0" Duration="{StaticResource Motion.Slow}" />
-                                        <DoubleAnimation Storyboard.TargetName="Tick"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0" Duration="{StaticResource Motion.Slow}" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.ExitActions>
-                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Mark.In}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Mark.Out}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
 
-                        <Trigger Property="IsMouseOver" Value="True">
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Mark.In.Lite}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Mark.Out.Lite}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <!--
+                            The swell is pure decoration, so lite mode has no enter action —
+                            only an exit, which puts the dot back if the mode changed while
+                            the pointer was on it.
+                        -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Swell.In}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Swell.Out}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <Trigger Property="infra:ThemeProps.Animated" Value="False">
                             <Trigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="DotScale"
-                                                         Storyboard.TargetProperty="ScaleX"
-                                                         To="1.12" Duration="{StaticResource Motion.Normal}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="DotScale"
-                                                         Storyboard.TargetProperty="ScaleY"
-                                                         To="1.12" Duration="{StaticResource Motion.Normal}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Swell.Out.Lite}" />
                             </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="DotScale"
-                                                         Storyboard.TargetProperty="ScaleX"
-                                                         To="1" Duration="{StaticResource Motion.Slow}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="DotScale"
-                                                         Storyboard.TargetProperty="ScaleY"
-                                                         To="1" Duration="{StaticResource Motion.Slow}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.ExitActions>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -504,8 +761,7 @@
                                 BorderThickness="1"
                                 CornerRadius="11" />
                         <Border x:Name="TrackRelief"
-                                IsHitTestVisible="False"
-                                Background="{StaticResource Sheen.Inset}"
+                                Style="{StaticResource Relief.Inset}"
                                 CornerRadius="11" />
                         <Ellipse x:Name="Thumb"
                                  Width="14" Height="14"
@@ -529,60 +785,32 @@
                     </Grid>
 
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsChecked" Value="True">
-                            <Trigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="TrackOn"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="1" Duration="{StaticResource Motion.Normal}" />
-                                        <DoubleAnimation Storyboard.TargetName="ThumbOn"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="1" Duration="{StaticResource Motion.Normal}" />
-                                        <DoubleAnimation Storyboard.TargetName="ThumbShift"
-                                                         Storyboard.TargetProperty="X"
-                                                         To="18" Duration="{StaticResource Motion.Normal}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="ThumbOnShift"
-                                                         Storyboard.TargetProperty="X"
-                                                         To="18" Duration="{StaticResource Motion.Normal}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="TrackOn"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0" Duration="{StaticResource Motion.Normal}" />
-                                        <DoubleAnimation Storyboard.TargetName="ThumbOn"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0" Duration="{StaticResource Motion.Normal}" />
-                                        <DoubleAnimation Storyboard.TargetName="ThumbShift"
-                                                         Storyboard.TargetProperty="X"
-                                                         To="0" Duration="{StaticResource Motion.Normal}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                        <DoubleAnimation Storyboard.TargetName="ThumbOnShift"
-                                                         Storyboard.TargetProperty="X"
-                                                         To="0" Duration="{StaticResource Motion.Normal}">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.ExitActions>
-                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Switch.On}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Switch.Off}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Switch.On.Lite}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Switch.Off.Lite}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.4" />
                             <Setter Property="Cursor" Value="Arrow" />
@@ -612,7 +840,8 @@
                                     BorderBrush="{DynamicResource Brush.Border.Strong}"
                                     BorderThickness="1"
                                     CornerRadius="{StaticResource Radius.Small}" />
-                            <Border x:Name="BoxOn"
+                            <!-- Named Mark to share the swatch's storyboards; see above. -->
+                            <Border x:Name="Mark"
                                     Opacity="0"
                                     Background="{DynamicResource Brush.Accent}"
                                     BorderBrush="{DynamicResource Brush.Accent}"
@@ -629,32 +858,32 @@
                     </StackPanel>
 
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsChecked" Value="True">
-                            <Trigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="BoxOn"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="1" Duration="{StaticResource Motion.Normal}" />
-                                        <DoubleAnimation Storyboard.TargetName="Tick"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="1" Duration="{StaticResource Motion.Normal}" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="BoxOn"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0" Duration="{StaticResource Motion.Slow}" />
-                                        <DoubleAnimation Storyboard.TargetName="Tick"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0" Duration="{StaticResource Motion.Slow}" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.ExitActions>
-                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Mark.In}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Mark.Out}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Mark.In.Lite}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Mark.Out.Lite}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
                         </Trigger>
@@ -729,26 +958,31 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}" />
                         </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Trigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Focused"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="1" Duration="{StaticResource Motion.Normal}" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Focused"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0" Duration="{StaticResource Motion.Slow}" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.ExitActions>
-                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsKeyboardFocused" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Focus.In}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Focus.Out}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsKeyboardFocused" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Focus.In.Lite}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Focus.Out.Lite}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -798,33 +1032,38 @@
                 <ControlTemplate TargetType="Thumb">
                     <Grid Background="{DynamicResource Brush.Surface.Transparent}">
                         <Border Background="{DynamicResource Brush.Border.Strong}" CornerRadius="3" Margin="3,0" />
-                        <Border x:Name="Hot"
+                        <Border x:Name="Hover"
                                 Opacity="0"
                                 Background="{DynamicResource Brush.Text.Disabled}"
                                 CornerRadius="3"
                                 Margin="3,0" />
                     </Grid>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Trigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hot"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="1" Duration="{StaticResource Motion.Normal}" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Hot"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0" Duration="{StaticResource Motion.Slow}" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.ExitActions>
-                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.In}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.Out}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.In.Lite}" />
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard Storyboard="{StaticResource SB.Hover.Out.Lite}" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -898,6 +1137,38 @@
                                   Opacity="0.17" Color="#000000" RenderingBias="Quality" />
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <!--
+                A drop shadow is a per-pixel blur the composition layer has to redo whenever
+                anything under it moves. The border alone still separates the card from the
+                page, so lite mode keeps the shape and drops the blur.
+            -->
+            <Trigger Property="infra:ThemeProps.Animated" Value="False">
+                <Setter Property="Effect" Value="{x:Null}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!--
+        The tray flyout and the pairing dialog: layered windows that need their own edge,
+        and the same lite-mode escape from a per-pixel blur.
+    -->
+    <Style x:Key="Popover" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Raised}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Large}" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="22" ShadowDepth="4" Direction="270"
+                                  Opacity="0.30" Color="#000000" RenderingBias="Quality" />
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="infra:ThemeProps.Animated" Value="False">
+                <Setter Property="Effect" Value="{x:Null}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- ==================== Progress ==================== -->
@@ -924,10 +1195,21 @@
                         </Border>
                     </Grid>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="IsVisible" Value="True">
-                            <Trigger.EnterActions>
+                        <!--
+                            The one animation in the app that repeats indefinitely, so it is
+                            also the only one that can hold the render thread awake. Both
+                            variants are capped well under the display's refresh rate: a
+                            two-pixel line crossing a window in a second and a half has
+                            nothing to show at sixty frames that it does not show at thirty.
+                        -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsVisible" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
                                 <BeginStoryboard Name="Sweep">
-                                    <Storyboard RepeatBehavior="Forever">
+                                    <Storyboard RepeatBehavior="Forever" Timeline.DesiredFrameRate="30">
                                         <DoubleAnimation Storyboard.TargetName="SliverScale"
                                                          Storyboard.TargetProperty="ScaleX"
                                                          From="0" To="1" Duration="0:0:1.6">
@@ -941,11 +1223,34 @@
                                                          BeginTime="0:0:1.6" Duration="0:0:0.5" />
                                     </Storyboard>
                                 </BeginStoryboard>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
                                 <StopStoryboard BeginStoryboardName="Sweep" />
-                            </Trigger.ExitActions>
-                        </Trigger>
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsVisible" Value="True" />
+                                <Condition Property="infra:ThemeProps.Animated" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard Name="SweepLite">
+                                    <Storyboard RepeatBehavior="Forever" Timeline.DesiredFrameRate="10">
+                                        <DoubleAnimation Storyboard.TargetName="SliverScale"
+                                                         Storyboard.TargetProperty="ScaleX"
+                                                         From="0" To="1" Duration="0:0:1.6" />
+                                        <DoubleAnimation Storyboard.TargetName="Sliver"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         From="1" To="0"
+                                                         BeginTime="0:0:1.6" Duration="0:0:0.5" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <StopStoryboard BeginStoryboardName="SweepLite" />
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

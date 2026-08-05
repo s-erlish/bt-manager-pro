@@ -11,6 +11,12 @@ public sealed class AppSettings
     /// <summary>Dark surfaces, or light ones tinted with the accent.</summary>
     public ThemeMode ThemeMode { get; set; } = ThemeMode.Dark;
 
+    /// <summary>
+    /// Trades the decoration for a smaller footprint: no animations, no shadows, no
+    /// relief, and the background polls stretched out. See <see cref="Pace"/>.
+    /// </summary>
+    public bool LiteMode { get; set; }
+
     /// <summary>Register the app in the per-user Run key so it comes up with the session.</summary>
     public bool AutoStart { get; set; }
 

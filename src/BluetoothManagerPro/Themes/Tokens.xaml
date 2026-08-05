@@ -69,4 +69,19 @@
     <Duration x:Key="Motion.Normal">0:0:0.34</Duration>
     <Duration x:Key="Motion.Slow">0:0:0.52</Duration>
 
+    <!--
+        Lite mode's duration. Every state has a second, identical storyboard timed with
+        this, so turning the decoration off changes how a state arrives and never whether
+        it arrives: the same animation reaches the same end value and holds it, which is
+        what keeps a checked box checked and a hovered button lit.
+    -->
+    <Duration x:Key="Motion.None">0:0:0</Duration>
+
+    <!--
+        The scan bar's frame rate is written into its own style rather than kept here:
+        Timeline.DesiredFrameRate is a nullable int, and whether a resource lookup satisfies
+        one is a detail of the property system this app should not be betting on. A literal
+        goes through the XAML type converter at build time, which cannot fail at runtime.
+    -->
+
 </ResourceDictionary>

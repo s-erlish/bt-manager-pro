@@ -5,6 +5,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using BluetoothManagerPro.Infrastructure;
 using BluetoothManagerPro.Interop;
 using BluetoothManagerPro.Services;
 using BluetoothManagerPro.ViewModels;
@@ -31,6 +32,7 @@ public partial class MainWindow : Window
     private double _scanHome = ScanHomeFallback;
     private bool _showingDevices = true;
     private bool _switching;
+    private bool _measuring;
 
     public MainWindow()
     {
@@ -42,7 +44,12 @@ public partial class MainWindow : Window
 
         SourceInitialized += (_, _) => ApplyFrame();
         DataContextChanged += OnDataContextChanged;
-        LayoutUpdated += OnLayoutUpdated;
+
+        // Re-measure only when something that could have moved the bar has happened; see
+        // OnLayoutUpdated for why this is not simply left subscribed.
+        Loaded += (_, _) => BeginMeasuring();
+        SizeChanged += (_, _) => BeginMeasuring();
+        ScanSpacer.IsVisibleChanged += (_, _) => BeginMeasuring();
     }
 
     /// <summary>Lets the window frame and icon follow the palette, which WPF cannot style itself.</summary>
@@ -88,7 +95,21 @@ public partial class MainWindow : Window
             _model.PropertyChanged += OnModelChanged;
             _showingDevices = _model.IsDevicesTab;
             ShowPane(_showingDevices);
+            ApplyAppearance(_model.IsAnimated);
         }
+    }
+
+    /// <summary>
+    /// Pushes lite mode out to every window.
+    ///
+    /// This window is set directly as well as through the sweep: the DataContext arrives
+    /// during construction, before the Application knows the window exists, so the sweep on
+    /// its own would set every window except the one asking.
+    /// </summary>
+    private void ApplyAppearance(bool animated)
+    {
+        ThemeProps.SetAnimated(this, animated);
+        ThemeProps.SetAnimatedGlobally(animated);
     }
 
     private void OnModelChanged(object? sender, PropertyChangedEventArgs e)
@@ -107,6 +128,14 @@ public partial class MainWindow : Window
                     SlideScanBar(_showingDevices, animate: false);
                 }
 
+                break;
+
+            case nameof(MainViewModel.IsAnimated):
+                ApplyAppearance(_model!.IsAnimated);
+
+                // The bar's position is carried by an animation that holds its end value.
+                // Re-seating it means a mode change caught mid-journey cannot strand it.
+                SlideScanBar(_showingDevices, animate: false);
                 break;
         }
     }
@@ -127,6 +156,20 @@ public partial class MainWindow : Window
         }
 
         _showingDevices = _model.IsDevicesTab;
+
+        if (!_model.IsAnimated)
+        {
+            // Lite mode: the panes simply exchange places. Any fade left over from a switch
+            // that was under way is released first, or the host would stay part-faded.
+            ContentHost.BeginAnimation(OpacityProperty, null);
+            _paneSwap?.Stop();
+            _paneSwap = null;
+            _switching = false;
+            ShowPane(_showingDevices);
+            SlideScanBar(_showingDevices, animate: false);
+            return;
+        }
+
         _switching = true;
 
         var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
@@ -154,6 +197,11 @@ public partial class MainWindow : Window
     {
         DevicesPane.Visibility = devices ? Visibility.Visible : Visibility.Collapsed;
         SettingsPane.Visibility = devices ? Visibility.Collapsed : Visibility.Visible;
+
+        if (devices)
+        {
+            BeginMeasuring();
+        }
     }
 
     private void SlideScanBar(bool devices, bool animate)
@@ -181,19 +229,59 @@ public partial class MainWindow : Window
     private double ScanTopY => TitleBar.ActualHeight + 6;
 
     /// <summary>
+    /// Subscribes to layout passes until the bar's resting position has been measured once.
+    ///
+    /// LayoutUpdated fires for every layout pass anywhere in the window, and the handler
+    /// walks a transform up the visual tree, so leaving it subscribed put that work on a
+    /// path that runs constantly. It is armed instead by the three things that can actually
+    /// move the strip — the window loading, the window resizing, the strip appearing — and
+    /// releases itself the moment it has an answer.
+    /// </summary>
+    private void BeginMeasuring()
+    {
+        if (_measuring)
+        {
+            return;
+        }
+
+        _measuring = true;
+        LayoutUpdated += OnLayoutUpdated;
+    }
+
+    private void EndMeasuring()
+    {
+        if (!_measuring)
+        {
+            return;
+        }
+
+        _measuring = false;
+        LayoutUpdated -= OnLayoutUpdated;
+    }
+
+    /// <summary>
     /// Learns where the bar belongs on the devices tab by measuring the strip reserved for
     /// it, rather than hard-coding a figure that quietly rots when the layout above changes.
     /// </summary>
     private void OnLayoutUpdated(object? sender, EventArgs e)
     {
-        if (_switching || !ScanSpacer.IsVisible || DevicesPane.Visibility != Visibility.Visible)
+        if (_switching)
         {
+            return;
+        }
+
+        if (!ScanSpacer.IsVisible || DevicesPane.Visibility != Visibility.Visible)
+        {
+            // Nothing to measure against right now; wait to be armed again.
+            EndMeasuring();
             return;
         }
 
         try
         {
             Point anchor = ScanSpacer.TranslatePoint(new Point(0, ScanSpacer.ActualHeight - 2), this);
+            EndMeasuring();
+
             if (Math.Abs(anchor.Y - _scanHome) < 0.5)
             {
                 return;
@@ -209,7 +297,7 @@ public partial class MainWindow : Window
         }
         catch (InvalidOperationException)
         {
-            // The spacer is not connected to this window's visual tree yet.
+            // The spacer is not connected to this window's visual tree yet — stay armed.
         }
     }
 

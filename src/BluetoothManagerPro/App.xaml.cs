@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using BluetoothManagerPro.Infrastructure;
+using BluetoothManagerPro.Interop;
 using BluetoothManagerPro.Models;
 using BluetoothManagerPro.Services;
 using BluetoothManagerPro.ViewModels;
@@ -17,6 +18,12 @@ namespace BluetoothManagerPro;
 /// </summary>
 public partial class App : Application
 {
+    /// <summary>
+    /// How long the window stays away before its memory is handed back. Long enough that
+    /// flicking the window shut and open again does not pay for a collection.
+    /// </summary>
+    private static readonly TimeSpan TrimDelay = TimeSpan.FromSeconds(5);
+
     private SingleInstance? _instance;
     private ThemeService? _theme;
     private BluetoothDiscoveryService? _discovery;
@@ -24,6 +31,7 @@ public partial class App : Application
     private MainViewModel? _viewModel;
     private TrayIconHost? _tray;
     private MainWindow? _window;
+    private DispatcherTimer? _trim;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -64,6 +72,7 @@ public partial class App : Application
 
         _window = new MainWindow { DataContext = _viewModel };
         _window.UseTheme(_theme);
+        _window.IsVisibleChanged += OnWindowVisibilityChanged;
         _viewModel.PairingPromptHandler = prompt => dispatcher.InvokeAsync(
             () => PairingDialog.AskAsync(prompt, _window)).Task.Unwrap();
 
@@ -83,8 +92,57 @@ public partial class App : Application
         {
             ShowMainWindow();
         }
+        else
+        {
+            // Started straight into the tray: the model has to be told, or it would poll at
+            // the pace of a window that is on screen for the whole session.
+            _viewModel.IsWindowVisible = false;
+        }
 
         _ = InitializeAsync();
+    }
+
+    /// <summary>
+    /// Follows the window between the screen and the tray, which is what decides how hard
+    /// the app works, and hands its memory back a few seconds after it goes away.
+    /// </summary>
+    private void OnWindowVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        bool visible = _window?.IsVisible == true;
+        if (_viewModel is not null)
+        {
+            _viewModel.IsWindowVisible = visible;
+        }
+
+        _trim?.Stop();
+        _trim = null;
+
+        if (visible)
+        {
+            return;
+        }
+
+        _trim = new DispatcherTimer(TrimDelay, DispatcherPriority.ApplicationIdle, (_, _) =>
+        {
+            _trim?.Stop();
+            _trim = null;
+            ReleaseMemory();
+        }, Dispatcher);
+    }
+
+    /// <summary>
+    /// Compacts the heap and returns the pages once the window is put away.
+    ///
+    /// A forced collection is normally the wrong instinct, but the shape here is the one it
+    /// was made for: the interface has just been torn down, releasing everything WPF built
+    /// for it, and the process is about to sit idle for hours. Left alone the app would hold
+    /// the high-water mark of the last time its window was open for as long as it ran.
+    /// </summary>
+    private static void ReleaseMemory()
+    {
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+        GC.WaitForPendingFinalizers();
+        WindowNative.TrimWorkingSet();
     }
 
     private async Task InitializeAsync()
@@ -130,6 +188,12 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _trim?.Stop();
+        if (_window is not null)
+        {
+            _window.IsVisibleChanged -= OnWindowVisibilityChanged;
+        }
+
         _tray?.Dispose();
         _viewModel?.Dispose();
         _discovery?.Dispose();

@@ -39,7 +39,7 @@
                             Background="{DynamicResource Brush.Surface.Overlay}"
                             TextElement.Foreground="{DynamicResource Brush.Text.Secondary}">
                         <Grid>
-                            <Border Background="{StaticResource Sheen.Raised}"
+                            <Border Style="{StaticResource Relief.Raised}"
                                     CornerRadius="{StaticResource Radius.Small}" />
                             <Path Data="{Binding Category, Converter={StaticResource CategoryToIcon}}"
                                   Style="{StaticResource IconPath.Small}" />
@@ -75,15 +75,7 @@
         </DataTemplate>
     </Window.Resources>
 
-    <Border Background="{DynamicResource Brush.Surface.Raised}"
-            BorderBrush="{DynamicResource Brush.Border.Strong}"
-            BorderThickness="1"
-            CornerRadius="{StaticResource Radius.Large}"
-            Margin="10">
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="22" ShadowDepth="4" Direction="270" Opacity="0.30" Color="#000000" />
-        </Border.Effect>
-
+    <Border Style="{StaticResource Popover}" Margin="10">
         <StackPanel Margin="6">
 
             <!-- Radio row -->

@@ -1,7 +1,6 @@
 using System;
 using System.ComponentModel;
 using System.Drawing;
-using System.Linq;
 using System.Windows.Forms;
 using BluetoothManagerPro.Services;
 using BluetoothManagerPro.ViewModels;
@@ -27,6 +26,12 @@ public sealed class TrayIconHost : IDisposable
 
     private TrayFlyoutWindow? _flyout;
     private Icon? _current;
+
+    /// <summary>What the icon currently shows, so an identical redraw can be skipped.</summary>
+    private Color _drawnColor;
+    private bool _drawnRadioOff;
+    private int _drawnConnected = -1;
+
     private bool _disposed;
 
     public TrayIconHost(MainViewModel viewModel, ThemeService theme)
@@ -57,7 +62,14 @@ public sealed class TrayIconHost : IDisposable
 
     public event Action? ExitRequested;
 
-    /// <summary>Redraws the icon for the current theme and connection state.</summary>
+    /// <summary>
+    /// Redraws the icon for the current theme and connection state, if either moved.
+    ///
+    /// The guard matters more than it looks. Assigning <c>NotifyIcon.Icon</c> rasterises a
+    /// fresh icon and hands it to the shell over a cross-process call, and this used to run
+    /// on every property change the device list produced — several times a second in a room
+    /// with Bluetooth traffic, to redraw pixels that were already identical.
+    /// </summary>
     public void Refresh()
     {
         if (_disposed)
@@ -65,7 +77,7 @@ public sealed class TrayIconHost : IDisposable
             return;
         }
 
-        int connected = _viewModel.Devices.Count(d => d.IsConnected);
+        int connected = _viewModel.ConnectedCount;
         bool radioOff = !_viewModel.IsBluetoothOn && _viewModel.IsRadioAvailable;
 
         Color color = radioOff
@@ -73,6 +85,15 @@ public sealed class TrayIconHost : IDisposable
             : connected > 0
                 ? TrayIconRenderer.ToDrawing(_theme.ShellAccentColor)
                 : IdleColor;
+
+        if (connected == _drawnConnected && radioOff == _drawnRadioOff && color == _drawnColor)
+        {
+            return;
+        }
+
+        _drawnConnected = connected;
+        _drawnRadioOff = radioOff;
+        _drawnColor = color;
 
         Icon rendered = TrayIconRenderer.Render(SystemInformation.SmallIconSize.Width, color, radioOff);
         _icon.Icon = rendered;
@@ -96,7 +117,7 @@ public sealed class TrayIconHost : IDisposable
     {
         if (e.PropertyName is nameof(MainViewModel.IsBluetoothOn)
             or nameof(MainViewModel.IsRadioAvailable)
-            or nameof(MainViewModel.QuickAccessDevices))
+            or nameof(MainViewModel.ConnectedCount))
         {
             Refresh();
         }
@@ -146,6 +167,10 @@ public sealed class TrayIconHost : IDisposable
 
     private void ShowFlyout()
     {
+        // The connection poll runs slowly while the window is away, so the flyout asks for
+        // the current state on the way up rather than showing whatever the last tick saw.
+        _ = _viewModel.RefreshNowAsync();
+
         _flyout ??= new TrayFlyoutWindow { DataContext = _viewModel };
         _flyout.OpenWindowRequested -= OnOpenWindowRequested;
         _flyout.ExitRequested -= OnExitRequested;
